@@ -1,4 +1,4 @@
-
+<img src="./coa_tools_logo.png" width="250">
 
 # Cutout Animation Tools - Documentation
 This is the Documentation for the Blender/Godot Addon Cutout Animation Tools.
