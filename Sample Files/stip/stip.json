@@ -1,0 +1,26 @@
+{
+"object_name":"stip",
+"offset":[-308.5,0,485.5],
+"sprites":[
+    {"Ear_R.png":{"name":"Ear_R.png","pos":[237,0,187],"tilesize":[1,1]}},
+    {"Head.png":{"name":"Head.png","pos":[180,1,208],"tilesize":[1,1]}},
+    {"Ear_L.png":{"name":"Ear_L.png","pos":[349,2,201],"tilesize":[1,1]}},
+    {"Forearm_R.png":{"name":"Forearm_R.png","pos":[119,3,537],"tilesize":[1,1]}},
+    {"Hand_R.png":{"name":"Hand_R.png","pos":[133,4,619],"tilesize":[1,1]}},
+    {"Arm_R.png":{"name":"Arm_R.png","pos":[152,5,462],"tilesize":[1,1]}},
+    {"Foot_R.png":{"name":"Foot_R.png","pos":[199,6,726],"tilesize":[2,1]}},
+    {"Shin_R.png":{"name":"Shin_R.png","pos":[208,7,677],"tilesize":[1,1]}},
+    {"Leg_R.png":{"name":"Leg_R.png","pos":[219,8,632],"tilesize":[1,1]}},
+    {"UpperBody.png":{"name":"UpperBody.png","pos":[159,9,352],"tilesize":[1,1]}},
+    {"Hip.png":{"name":"Hip.png","pos":[235,10,573],"tilesize":[1,1]}},
+    {"Foot_L.png":{"name":"Foot_L.png","pos":[278,11,715],"tilesize":[1,1]}},
+    {"Shin_L.png":{"name":"Shin_L.png","pos":[281,12,675],"tilesize":[1,1]}},
+    {"Leg_L.png":{"name":"Leg_L.png","pos":[287,13,627],"tilesize":[1,1]}},
+    {"Arm_L.png":{"name":"Arm_L.png","pos":[321,14,460],"tilesize":[1,1]}},
+    {"Hand_L.png":{"name":"Hand_L.png","pos":[331,15,621],"tilesize":[1,1]}},
+    {"Forearm_L.png":{"name":"Forearm_L.png","pos":[319,16,529],"tilesize":[1,1]}},
+    {"Tail_01.png":{"name":"Tail_01.png","pos":[202,17,627],"tilesize":[1,1]}},
+    {"Tail_02.png":{"name":"Tail_02.png","pos":[190,18,660],"tilesize":[1,1]}},
+    {"Tail_03.png":{"name":"Tail_03.png","pos":[154,19,721],"tilesize":[1,1]}}
+    ]
+}
