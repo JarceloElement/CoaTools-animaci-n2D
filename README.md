@@ -37,3 +37,20 @@ Features:
 - Json importer
 - sprites, bones and animations get imported
 - clever reimport functionality. Offers the possibility to merge local changes that were made in godot to the newly imported scene. This enables a very flexible workflow. Work in blender, then export. Import in godot. Make additions like adding new nodes, adding custom animations. After reimport all local changes will be preserved if merging is enabled.
+
+## Download and Installation
+[Download version Alpha 1](https://www.dropbox.com/sh/dhk2ou0mvq4cjju/AACmhTgppQic5ImM2lKAtWlsa?dl=0)
+
+### Photoshop Exporter:
+The .jsx file has to be copied into the photoshop scripts folder which is located in: 
+C:\Program Files\Adobe\Adobe Photoshop CC 2015\Presets\Scripts
+Don’t forget to restart Photoshop and then go to File -> Scripts -> BlenderExporter.jsx
+
+### Blender Addon:
+Go to File -> User Preferences -> Add-ons and click the “Install from file...” button.
+This will install and enable the Addon for. Don’t forget to save the user preferences, otherwise the addon will not be activated after restart.
+
+### Godot Importer:
+Notice, this importer will only run with current godot 2.1 dev builds. 
+Create an /addon folder in your game projects folder and extract the coa_importer.zip into that folder. Once the files are loaded go to Project Settings -> Plugins -> Cutout Animation Importer and activate the Plugin.
+
