@@ -10,6 +10,8 @@ If you like this addon and want to thank me with a small donation feel free to d
 ## Description
 The Cutout Animation Tools (COA Tools) Addon for blender is a 2D rigging and animation suite. It offers you similar tools as for example programs like Spine or Spriter. COA Tools offer you a rapid workflow to create 2D Cutout Character/Animations in blender. Thanks to blenders great animation system and and this addon you get a powerfull solution to create 2D animations. It is parted into 3 different components. Photoshop sprite exporter, Blender Addon, Godot importer.
 
+[Take a look at the addon in action.](https://www.youtube.com/playlist?list=PLPI26-KXCXpA-VMlDIWpmdq6M1m4LEjf_)
+
 ### Photoshop sprite exporter
 Quickly export photoshop layers into separate files with json coordinate informations. This can be used in blender to import sprites very quickly.
 Features:
@@ -42,8 +44,11 @@ Features:
 [Download version Alpha 1](https://www.dropbox.com/sh/dhk2ou0mvq4cjju/AACmhTgppQic5ImM2lKAtWlsa?dl=0)
 
 ### Photoshop Exporter:
-The .jsx file has to be copied into the photoshop scripts folder which is located in: 
+
+The .jsx file has to be copied into the photoshop scripts folder which is located in:
+
 C:\Program Files\Adobe\Adobe Photoshop CC 2015\Presets\Scripts
+
 Don’t forget to restart Photoshop and then go to File -> Scripts -> BlenderExporter.jsx
 
 ### Blender Addon:
