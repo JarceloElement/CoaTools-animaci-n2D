@@ -92,6 +92,10 @@ def check_name(name_array,name):
 
 def create_action(context,item=None):
     sprite_object = get_sprite_object(context.active_object)
+    
+    if len(sprite_object.coa_anim_collections) < 3:
+        bpy.ops.my_operator.add_animation_collection()
+    
     if item == None:
         item = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
     obj = context.active_object
