@@ -315,9 +315,11 @@ class CutoutAnimationTools(bpy.types.Panel):
             bpy.context.scene.tool_settings.use_snap = False
     
     def lock_view(self,context):
-        if bpy.data.scenes[0].coa_lock_view == False:
-            set_view("PERSP",set_current_screen=True)
+        region_3d = context.space_data.region_3d
+        screen = context.screen
+        if screen.coa_lock_view == False:
             set_middle_mouse_move(False)
+            set_view(screen,"3D")
 
     
         
@@ -330,19 +332,20 @@ class CutoutAnimationTools(bpy.types.Panel):
     bpy.types.Scene.coa_distance_constraint = BoolProperty(default=True,description="Constraint Distance to Viewport")
     bpy.types.Scene.coa_lock_to_bounds = BoolProperty(default=True,description="Lock Cursor to Object Bounds")
     bpy.types.Scene.coa_lock_view = BoolProperty(default=False, description="Locks the View to an Orthographic Front View",update=lock_view)
-    
+    bpy.types.Screen.coa_lock_view = BoolProperty(default=False, description="Locks the View to an Orthographic Front View",update=lock_view)
     
     def draw(self, context):
         layout = self.layout
         obj = context.active_object
         sprite_object = get_sprite_object(obj)
         scene = context.scene    
+        screen = context.screen
         
         row = layout.row(align=True)
-        if scene.coa_lock_view == False:
+        if screen.coa_lock_view == False:
             row.operator("scene.coa_lock_view",text="3D View",icon="MESH_CUBE")
         else:
-            row.prop(bpy.data.scenes[0],"coa_lock_view",text="2D View",icon="MATPLANE")
+            row.prop(screen,"coa_lock_view",text="2D View",icon="MATPLANE")
         
         row = layout.row(align=True)
         row.label(text="General Operator:")
@@ -473,13 +476,13 @@ class LockView(bpy.types.Operator):
     bl_options = {"REGISTER"}
                 
     def execute(self,context):
+        screen = context.screen
         region_3d = context.space_data.region_3d
-        bpy.data.scenes[0].coa_lock_view = True
-        bpy.ops.view3d.viewnumpad(type='FRONT', align_active=False)
-        if region_3d.view_perspective != "ORTHO":
-            bpy.ops.view3d.view_persportho()
+        screen.coa_lock_view = True
+        
+        set_view(screen,"2D")
+        
         set_middle_mouse_move(True)
-        set_view("ORTHO",Quaternion((0.7071,0.7071,-0.0,-0.0)),True)
         return{'FINISHED'}
 
 ######################################################################################################################################### Select Child Operator

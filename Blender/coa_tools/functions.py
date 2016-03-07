@@ -197,17 +197,18 @@ def set_alpha(obj,context):
                 if tex_slot != None:
                     tex_slot.alpha_factor = obj.coa_alpha
                     
-def set_view(perspective,rotation=None,lock_rotation=False,set_current_screen=False):
-    for screen in bpy.data.screens:
-        if screen != bpy.context.screen or set_current_screen == True:
-            for area in screen.areas:
-                if area.type == "VIEW_3D":
-                    for space in area.spaces:
-                        if space.type == "VIEW_3D":
-                            #space.region_3d.lock_rotation = lock_rotation
-                            if rotation != None:
-                                space.region_3d.view_rotation = rotation
-                            space.region_3d.view_perspective = perspective
+def set_view(screen,mode):
+    if mode == "2D":
+        active_space_data = bpy.context.space_data
+        region_3d = active_space_data.region_3d
+        bpy.ops.view3d.viewnumpad(type='FRONT')
+        if region_3d.view_perspective != "ORTHO":
+            bpy.ops.view3d.view_persportho()
+    elif mode == "3D":
+        active_space_data = bpy.context.space_data
+        region_3d = active_space_data.region_3d
+        if region_3d.view_perspective == "ORTHO":
+            bpy.ops.view3d.view_persportho()        
 
 
 def set_middle_mouse_move(enable):

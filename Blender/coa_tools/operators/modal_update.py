@@ -104,7 +104,13 @@ class COAModal(bpy.types.Operator):
             self.set_scaling(active_object,event)
             if self.sprite_object != None:
                 self.set_frame_bounds_and_actions(context)
-            
+        elif self.check_event_value(event) == "JUST_RELEASED":
+            screen = context.screen
+            if screen.coa_lock_view:
+                set_middle_mouse_move(True)
+            else:
+                set_middle_mouse_move(False)
+                
         
         ### Store sprite dimension in coa_sprite_dimension when mesh is rescaled
             for obj in context.selected_objects:
@@ -139,4 +145,4 @@ def coa_startup(dummy):
         set_middle_mouse_move(True)
     else:
         set_middle_mouse_move(False)
-bpy.app.handlers.load_post.append(coa_startup)      
+bpy.app.handlers.load_post.append(coa_startup)
