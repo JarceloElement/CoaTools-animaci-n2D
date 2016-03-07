@@ -41,7 +41,7 @@ Features:
 - clever reimport functionality. Offers the possibility to merge local changes that were made in godot to the newly imported scene. This enables a very flexible workflow. Work in blender, then export. Import in godot. Make additions like adding new nodes, adding custom animations. After reimport all local changes will be preserved if merging is enabled.
 
 ## Download and Installation
-[Download version Alpha 1](https://www.dropbox.com/sh/dhk2ou0mvq4cjju/AACmhTgppQic5ImM2lKAtWlsa?dl=0)
+[Download COA Tools v1.0 beta](https://www.dropbox.com/sh/k541ak3rbnc4db9/AABURezUHkEbkJMt_D8OkPtWa?dl=0)
 
 ### Photoshop Exporter:
 
