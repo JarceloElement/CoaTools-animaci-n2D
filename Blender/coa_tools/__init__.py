@@ -22,11 +22,12 @@ bl_info = {
     "name": "Cutout Animation Tools",
     "description": "This Addon provides a Toolset for a 2D Animation Workflow.",
     "author": "Andreas Esau",
-    "version": (0, 1, 0, "Alpha"),
+    "version": (0, 1, 0, "Beta"),
     "blender": (2, 75, 0),
     "location": "View 3D > Tools > Cutout Animation Tools",
     "warning": "This addon is still in development.",
-    "wiki_url": "",
+    "wiki_url": "https://github.com/ndee85/coa_tools/wiki",
+    "tracker_url": "https://github.com/ndee85/coa_tools/issues",
     "category": "Ndee Tools" }
     
     
