@@ -29,9 +29,12 @@ bl_info = {
     "wiki_url": "https://github.com/ndee85/coa_tools/wiki",
     "tracker_url": "https://github.com/ndee85/coa_tools/issues",
     "category": "Ndee Tools" }
-    
-    
+
+
 import bpy
+import os
+import shutil
+import tempfile
 from bpy.app.handlers import persistent
 
 # load and reload submodules
@@ -53,21 +56,27 @@ class ExampleAddonPreferences(bpy.types.AddonPreferences):
 
     show_donate_icon = bpy.props.BoolProperty(name="Show Donate Icon",default=True)
     sprite_import_export_scale = bpy.props.FloatProperty(name="Sprite import/export scale",default=0.01)
+    sprite_thumb_size = bpy.props.IntProperty(name="Sprite thumbnail size",default=48)
     def draw(self, context):
         layout = self.layout
         layout.prop(self, "show_donate_icon")
         layout.prop(self,"sprite_import_export_scale")
+        layout.prop(self,"sprite_thumb_size")
 
 
 def register():
-    
     import bpy.utils.previews
+    pcoll2 = bpy.utils.previews.new() 
+    pcoll2.my_previews = ()
+    preview_collections["coa_thumbs"] = pcoll2
+    
     pcoll = bpy.utils.previews.new()
+    pcoll.my_previews = ()
     my_icons_dir = os.path.join(os.path.dirname(__file__),"icons")
     pcoll.load("donate_icon", os.path.join(my_icons_dir,"donate_icon.png"),'IMAGE')
     pcoll.load("twitter_icon", os.path.join(my_icons_dir,"twitter_icon.png"),'IMAGE')
     
-    preview_collections["main"] = pcoll    
+    preview_collections["main"] = pcoll
     
     
     try: bpy.utils.register_module(__name__)
@@ -81,8 +90,11 @@ def register():
     if kc:
         km = kc.keymaps.new(name="3D View", space_type="VIEW_3D")
         kmi = km.keymap_items.new('view3d.move', 'MIDDLEMOUSE', 'PRESS')
-        kmi.active = False  
-    
+        kmi.active = False
+        
+    bpy.app.handlers.frame_change_post.append(update_sprites)    
+    bpy.app.handlers.scene_update_pre.append(update_thumbs)
+    bpy.app.handlers.load_post.append(coa_startup)
     
 def unregister():
     for pcoll in preview_collections.values():
@@ -93,8 +105,13 @@ def unregister():
     except: traceback.print_exc()
     
     print("Unregistered {}".format(bl_info["name"]))
-    bpy.context.window_manager.coa_running_modal = False    
+    bpy.context.window_manager.coa_running_modal = False
     
+    bpy.app.handlers.frame_change_post.remove(update_sprites)
+    bpy.app.handlers.scene_update_pre.remove(update_thumbs)
+    bpy.app.handlers.load_post.remove(coa_startup)
+    
+         
 @persistent
 def update_sprites(dummy):
     bpy.context.scene.coa_ticker += 1
@@ -102,9 +119,44 @@ def update_sprites(dummy):
         for obj in bpy.context.visible_objects:
             if "sprite" in obj and obj.animation_data != None and obj.animation_data.action != None:
                 update_uv(bpy.context,obj)
-                set_alpha(obj,bpy.context)
+                set_alpha(obj,bpy.context,obj.coa_alpha)
+                set_z_value(context,obj,obj.coa_z_value)
     except:
         pass
     if bpy.context.scene.coa_ticker%3 == 0:
         bpy.context.scene.update()
-bpy.app.handlers.frame_change_post.append(update_sprites)
+
+@persistent
+def update_thumbs(dummy):
+    obj = bpy.context.active_object
+    if obj != None and not obj.coa_sprite_updated:
+        for thumb in preview_collections["coa_thumbs"]:
+            preview_collections["coa_thumbs"][thumb].reload()
+        obj.coa_sprite_updated = True
+
+
+### start modal operator 
+def scene_update_callback(scene):
+    bpy.app.handlers.scene_update_pre.remove(scene_update_callback)
+    bpy.context.window_manager.coa_running_modal = False
+    bpy.ops.wm.coa_modal()  
+@persistent
+def coa_startup(dummy):
+    print("startup coa modal operator")
+    bpy.app.handlers.scene_update_pre.append(scene_update_callback)
+    
+    if bpy.data.scenes[0].coa_lock_view:
+        set_middle_mouse_move(True)
+    else:
+        set_middle_mouse_move(False)
+
+
+
+import atexit
+
+### delete thumbs on blender exit
+def delete_thumb_previews():
+    thumb_dir_path = os.path.join(tempfile.gettempdir(),"coa_thumbs")
+    if os.path.exists(thumb_dir_path):
+        shutil.rmtree(thumb_dir_path, ignore_errors=True)        
+atexit.register(delete_thumb_previews)

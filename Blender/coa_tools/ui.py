@@ -132,30 +132,66 @@ class AddKeyframe(bpy.types.Operator):
     def execute(self, context):
         sprite = context.active_object
         sprite_object = get_sprite_object(sprite)
-        if self.add_keyframe:
-            if sprite.animation_data != None and sprite.animation_data.action != None:
-                sprite.keyframe_insert(self.prop_name)
+        if sprite_object.coa_anim_collections_index > 1:
+            if self.add_keyframe:
+                for sprite in context.selected_objects:
+                    if sprite.animation_data != None and sprite.animation_data.action != None:
+                        sprite.keyframe_insert(self.prop_name)
+                    else:
+                        create_action(context)
+                        sprite.keyframe_insert(self.prop_name)
+                self.report({'INFO'},str("Keyframe added at frame "+str(context.scene.frame_current)+"."))    
             else:
-                create_action(context)
-                sprite.keyframe_insert(self.prop_name)
-            self.report({'INFO'},str("Keyframe added at frame "+str(context.scene.frame_current)+"."))    
+                for sprite in context.selected_objects:
+                    if sprite.animation_data != None and sprite.animation_data.action != None:
+                        sprite.keyframe_delete(self.prop_name)
+                        
+                        collection = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
+                        action_name = collection.name + "_" +sprite.name
+                        if action_name in bpy.data.actions:
+                            action = bpy.data.actions[action_name]
+                            if len(action.fcurves) == 0:
+                                action.use_fake_user = False
+                                action.user_clear()   
+                        self.report({'INFO'},str("Keyframe deleted at frame "+str(context.scene.frame_current)+"."))
+                        set_action(context)
+                    else:
+                        self.report({'WARNING'},str("Sprite has no Animation assigned."))
         else:
-            if sprite.animation_data != None and sprite.animation_data.action != None:
-                sprite.keyframe_delete(self.prop_name)
-                
-                collection = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
-                action_name = collection.name + "_" +sprite.name
-                if action_name in bpy.data.actions:
-                    action = bpy.data.actions[action_name]
-                    if len(action.fcurves) == 0:
-                        action.use_fake_user = False
-                        action.user_clear()   
-                self.report({'INFO'},str("Keyframe deleted at frame "+str(context.scene.frame_current)+"."))
-                set_action(context)
-            else:
-                self.report({'WARNING'},str("Sprite has no Animation assigned."))       
+            self.report({'WARNING'},str("No Animation selected"))
         return {"FINISHED"}
         
+
+def enum_sprite_previews(self, context):
+    """EnumProperty callback"""
+    enum_items = []
+    
+    if context is None:
+        return enum_items
+
+    # Get the preview collection (defined in register func).
+    coa_pcoll = preview_collections["coa_thumbs"]
+    
+    #thumb_dir_path = bpy.utils.user_resource("DATAFILES","coa_thumbs")
+    thumb_dir_path = os.path.join(context.user_preferences.filepaths.temporary_directory,"coa_thumbs")
+    
+    if os.path.exists(thumb_dir_path):
+        # Scan the directory for png files
+        image_paths = []
+        for fn in os.listdir(thumb_dir_path):
+            if fn.lower().endswith(".png") and self.name in fn:
+                image_paths.append(fn)      
+        for i, name in enumerate(image_paths):
+            if i < self.coa_tiles_x * self.coa_tiles_y:
+                filepath = os.path.join(thumb_dir_path, name)
+
+                if name in coa_pcoll:
+                    thumb = coa_pcoll[name]
+                else:    
+                    thumb = coa_pcoll.load(name, filepath, 'IMAGE')
+                enum_items.append((str(i), name, "", thumb.icon_id, i))
+ 
+    return enum_items
     
 class CutoutAnimationObjectProperties(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
@@ -194,17 +230,40 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     def update_verts(self,context):
         update_uv(context,context.active_object)
         update_verts(context,context.active_object)
+    
+    def change_tilesize(self,context):
+        update_uv(context,context.active_object)
+        update_verts(context,context.active_object)
+        self.coa_tiles_changed = True
+    
+    def set_z_value(self,context):
+        #obj = context.active_object
         
-    def set_alpha(self,context):
-        set_alpha(self,context)
+        if context.scene.objects.active == self:
+            for obj in bpy.context.selected_objects:
+                if obj.type == "MESH":
+                    if obj != self:
+                        obj.coa_z_value = self.coa_z_value
+                    set_z_value(context,obj,self.coa_z_value)
+                
             
+    def set_alpha(self,context):
+        if context.scene.objects.active == self:
+            for obj in bpy.context.selected_objects:
+                if obj.type == "MESH":
+                    if obj != self:
+                        obj.coa_alpha = self.coa_alpha
+                    set_alpha(obj,context,self.coa_alpha)
+            
+    def set_sprite_frame(self,context):
+        self.coa_sprite_frame = int(self.coa_sprite_frame_previews)
         
     bpy.types.Object.coa_dimensions_old = FloatVectorProperty()
     bpy.types.Object.coa_sprite_dimension = FloatVectorProperty()
-    bpy.types.Object.coa_tiles_x = IntProperty(description="X Tileset",default = 1,min=1,update=update_verts)
-    bpy.types.Object.coa_tiles_y = IntProperty(description="Y Tileset",default = 1,min=1,update=update_verts)
+    bpy.types.Object.coa_tiles_x = IntProperty(description="X Tileset",default = 1,min=1,update=change_tilesize)
+    bpy.types.Object.coa_tiles_y = IntProperty(description="Y Tileset",default = 1,min=1,update=change_tilesize)
     bpy.types.Object.coa_sprite_frame = IntProperty(description="Frame",default = 0,min=0,update=update_uv)
-    bpy.types.Object.coa_z_value = IntProperty(description="Z Depth",default=0)
+    bpy.types.Object.coa_z_value = IntProperty(description="Z Depth",default=0,update=set_z_value)
     bpy.types.Object.coa_alpha = FloatProperty(default=1.0,min=0.0,max=1.0,update=set_alpha)
     bpy.types.Object.coa_show_bones = BoolProperty()
     bpy.types.Object.coa_filter_names = StringProperty()
@@ -223,6 +282,9 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.Bone.coa_hide_select = BoolProperty(default=False, update=hide_select_bone)
     bpy.types.Bone.coa_hide = BoolProperty(default=False,update=hide_bone)
     bpy.types.Object.coa_show_export_box = BoolProperty()
+    bpy.types.Object.coa_sprite_frame_previews = EnumProperty(items = enum_sprite_previews,update=set_sprite_frame)
+    bpy.types.Object.coa_tiles_changed = BoolProperty(default=False)
+    bpy.types.Object.coa_sprite_updated = BoolProperty(default=False)
     
     
     bpy.types.WindowManager.coa_running_modal = BoolProperty(default=False)
@@ -233,6 +295,8 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
         obj = context.active_object
         sprite_object = get_sprite_object(obj)
         scene = context.scene
+        
+        
         
         if sprite_object != None:
             if len(sprite_object.children) > 0:
@@ -274,12 +338,18 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                 
                 row = layout.row(align=True)
                 row.prop(obj,'coa_sprite_frame',text="Frame Index",icon="UV_FACESEL")
+                
+                if obj.coa_tiles_x * obj.coa_tiles_y > 1:
+                    op = row.operator("my_operator.select_frame_thumb",text="",icon="IMAGE_COL")
+                    
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
                 op.prop_name = "coa_sprite_frame"
                 op.add_keyframe = True
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
                 op.prop_name = "coa_sprite_frame"
                 op.add_keyframe = False
+                #row.template_icon_view(obj, "coa_sprite_frame_previews")
+            
             if obj != None and obj.type == "MESH":
                 row = layout.row(align=True)
                 row.prop(obj,'coa_alpha',text="Alpha",icon="TEXTURE")

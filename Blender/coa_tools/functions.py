@@ -43,6 +43,9 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 import json
 from bpy.app.handlers import persistent
 
+def clamp(n, minn, maxn):
+    return max(min(maxn, n), minn)
+
 def b_version_bigger_than(version):
     if bpy.app.version > version:
         return True
@@ -192,14 +195,15 @@ def create_armature(context):
         amt.draw_type = "BBONE"
         return armature
 
-def set_alpha(obj,context):
+def set_alpha(obj,context,alpha):
     sprite_object = get_sprite_object(obj)
     
     for mat in obj.material_slots:
         if mat != None:
             for i,tex_slot in enumerate(mat.material.texture_slots):
                 if tex_slot != None:
-                    tex_slot.alpha_factor = obj.coa_alpha
+                    tex_slot.alpha_factor = alpha
+                    
                     
 def set_view(screen,mode):
     if mode == "2D":
@@ -219,7 +223,7 @@ def set_middle_mouse_move(enable):
     km = bpy.context.window_manager.keyconfigs.addon.keymaps["3D View"]
     km.keymap_items["view3d.move"].active = enable
     
-def assign_tex_to_uv(self,image,uv):
+def assign_tex_to_uv(image,uv):
     for i,data in enumerate(uv.data):
         uv.data[i].image = image
         
@@ -365,6 +369,11 @@ def update_verts(context,obj):
         if armature != None:
             armature.data.pose_position = pose_position
         bpy.ops.object.mode_set(mode=mode_prev)    
+
+def set_z_value(context,obj,z):
+    scale = get_addon_prefs(context).sprite_import_export_scale
+    obj.location[1] = -z  * scale
+    
         
 def display_children(self, context, obj):
     layout = self.layout

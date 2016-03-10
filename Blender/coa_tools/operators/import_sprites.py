@@ -113,14 +113,22 @@ class ImportSprite(bpy.types.Operator):
             mat = self.create_material(context,obj,name=img.name)
             tex = self.create_texture(context,mat,img,name=img.name)
             msg = sprite_name + " Sprite created."
-            assign_tex_to_uv(self,img,obj.data.uv_textures.active)
+            assign_tex_to_uv(img,obj.data.uv_textures.active)
             
             obj.coa_sprite_dimension = Vector((get_local_dimension(obj)[0],0,get_local_dimension(obj)[1]))
             
             obj.coa_tiles_x = self.tilesize[0]
             obj.coa_tiles_y = self.tilesize[1]
             
-            print(img.size,"---",self.scale)
+            selected_objects = []
+            for obj2 in context.selected_objects:
+                selected_objects.append(obj2)
+                if obj2 != context.active_object:
+                    obj2.select = False
+            obj.coa_z_value = -self.pos[1]
+            for obj2 in selected_objects:
+                obj2.select = True
+            
             self.report({'INFO'},msg)
             return{'FINISHED'}
         else:

@@ -132,17 +132,5 @@ class COAModal(bpy.types.Operator):
             context.window_manager.coa_running_modal = True
             wm.modal_handler_add(self)
         return{'RUNNING_MODAL'} 
-    
-    
-def scene_update_callback(scene):
-    bpy.app.handlers.scene_update_pre.remove(scene_update_callback)
-    bpy.ops.wm.coa_modal()  
-@persistent
-def coa_startup(dummy):
-    bpy.app.handlers.scene_update_pre.append(scene_update_callback)
 
-    if bpy.data.scenes[0].coa_lock_view:
-        set_middle_mouse_move(True)
-    else:
-        set_middle_mouse_move(False)
-bpy.app.handlers.load_post.append(coa_startup)
+
