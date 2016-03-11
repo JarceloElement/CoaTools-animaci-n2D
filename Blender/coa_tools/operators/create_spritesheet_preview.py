@@ -70,12 +70,16 @@ class SelectFrameThumb(bpy.types.Operator):
     
     def invoke(self, context, event):
         obj = context.active_object
-        if obj.coa_tiles_changed:
-            obj.coa_sprite_updated = False
-        bpy.ops.my_operator.create_spritesheet_preview()
-            
-        wm = context.window_manager 
-        return wm.invoke_popup(self,100)
+        if "sprite" in obj and obj.type == "MESH" and obj.coa_tiles_x * obj.coa_tiles_y > 1:
+            if obj.coa_tiles_changed:
+                obj.coa_sprite_updated = False
+            bpy.ops.my_operator.create_spritesheet_preview()
+                
+            wm = context.window_manager 
+            return wm.invoke_popup(self,100)
+        else:
+            self.report({'INFO'},"Object has no Sprites.")
+            return {"FINISHED"}
     
     def execute(self, context):
         return {"FINISHED"}

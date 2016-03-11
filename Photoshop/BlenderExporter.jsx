@@ -3,6 +3,7 @@
 var doc = app.activeDocument;
 var layers = doc.layers;
 var coords = [];
+var exporter_version = "v1.0 Beta"
 
 //Save Options for PNGs
 var options = new ExportOptionsSaveForWeb();
@@ -88,6 +89,10 @@ function duplicate_into_new_doc(){
 }    
 
 function export_sprites(export_path , export_name , crop_to_dialog_bounds , center_sprites){
+    // check if folder exists. if not, create one
+    var export_folder = new Folder(export_path);
+    if(!export_folder.exists) export_folder.create();
+    
     var tmp_layers = doc.layers;
     
     duplicate_into_new_doc();
@@ -132,16 +137,29 @@ function export_sprites(export_path , export_name , crop_to_dialog_bounds , cent
             var keyword_pos = layer_name.indexOf("--sprites") ;
             var sprites = tmp_doc.layers[0].layers;
             var sprite_count = sprites.length;
-            tile_size = [sprite_count,1]
+            if (column_str_index = layer_name.indexOf("c=") != -1){
+                var column_str_index = layer_name.indexOf("c=")+2;
+                var columns = parseInt(layer_name.substring(column_str_index,layer_name.length));
+            }else{
+                var columns = parseInt(Math.sqrt(sprite_count)+0.5);
+            }
+            tile_size = [columns,parseInt(sprite_count/columns + 0.5)];
+            $.writeln(tile_size);
             if (layer_name[keyword_pos - 1] == "_"){
                 layer_name = layer_name.substring(0,keyword_pos - 1);
             }else{
                 layer_name = layer_name.substring(0,keyword_pos);
-            }    
+            }
+            var k = 0;
             for(j=0;j<sprites.length;j++){
-                sprites[j].translate(tmp_doc.width * j, 0);
-            }    
-            extend_document_size(tmp_doc.width * sprite_count, tmp_doc.height);
+                if(j>0 && j%columns == 0){
+                    k = k+1;
+                }
+                sprites[j].translate(tmp_doc.width * (j%columns), tmp_doc.height * k);
+            }
+
+            extend_document_size(tmp_doc.width * columns, tmp_doc.height * (k+1));
+
         }
         // do save stuff
         tmp_doc.exportDocument(File(export_path+"/"+layer_name+".png"),ExportType.SAVEFORWEB,options );
@@ -158,12 +176,12 @@ function export_sprites(export_path , export_name , crop_to_dialog_bounds , cent
 
 function export_button(){
     try{
-        win.export_name.text = String(win.export_name.text).split(' ').join('_');
-        app.activeDocument.info.caption = win.export_path.text;
-        app.activeDocument.info.captionWriter = win.export_name.text;
-        //export_sprites(win.export_path.text, win.export_name.text, win.limit_layer.value, win.center_sprites.value);
-        app.activeDocument.suspendHistory("Export selected Sprites","export_sprites(win.export_path.text, win.export_name.text, win.limit_layer.value, win.center_sprites.value)");
-        win.close();
+            win.export_name.text = String(win.export_name.text).split(' ').join('_');
+            app.activeDocument.info.caption = win.export_path.text;
+            app.activeDocument.info.captionWriter = win.export_name.text;
+            //export_sprites(win.export_path.text, win.export_name.text, win.limit_layer.value, win.center_sprites.value);
+            app.activeDocument.suspendHistory("Export selected Sprites","export_sprites(win.export_path.text, win.export_name.text, win.limit_layer.value, win.center_sprites.value)");
+            win.close();
     }catch (e){
         win.close();
         alert ("No selected layer to export.", "Warning");
@@ -179,7 +197,7 @@ function path_button(){
     }
 }    
 
-var win = new Window("dialog", 'Export layers to Blender', [0,0,445,117], );
+var win = new Window("dialog", 'Json Exporter '+exporter_version, [0,0,445,117], );
 with(win){
 	win.export_path = add( "edittext", [85,15,365,35], 'export_path' );
 	win.sText = add( "statictext", [5,20,75,40], 'Export Path:' );

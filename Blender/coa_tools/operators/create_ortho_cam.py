@@ -66,14 +66,15 @@ class CreateOrtpographicCamera(bpy.types.Operator):
     def invoke(self, context, event):
         wm = context.window_manager 
         return wm.invoke_props_dialog(self)
-        #return wm.invoke_props_popup(self,event)
         
     def execute(self, context):
+        active_object = context.active_object
         context.scene.objects.active = None
         scene = context.scene
         if self.create:
             bpy.ops.object.camera_add(view_align=True, enter_editmode=False, location=(0, -10, 0), rotation=(radians(90), 0, 0))
-        cam = context.active_object
+        context.scene.objects.active = active_object
+        cam = active_object
         cam.data.type = "ORTHO"
         scene.render.pixel_filter_type = "BOX"
         scene.render.alpha_mode = "TRANSPARENT"
@@ -85,15 +86,7 @@ class CreateOrtpographicCamera(bpy.types.Operator):
             scene.render.resolution_x = self.resolution[0]
             scene.render.resolution_y = self.resolution[1]
             scene.render.resolution_percentage = 100
-        scene.camera = cam  
-        bpy.ops.view3d.viewnumpad(type="CAMERA")
-        
-#        if bpy.data.scenes[0].coa_lock_view:
-#            #bpy.data.scenes[0].coa_lock_view = False
-#            set_view("PERSP",set_current_screen=True)
-#            bpy.ops.view3d.viewnumpad(type="CAMERA")
-#            #set_middle_mouse_move(False)
-#            
-#        if not bpy.data.scenes[0].coa_lock_view:
-#            if context.space_data.region_3d.view_perspective != "CAMERA":
+        scene.camera = cam
+        if bpy.context.space_data.region_3d.view_perspective != "CAMERA":
+            bpy.ops.view3d.viewnumpad(type="CAMERA")
         return{"FINISHED"}

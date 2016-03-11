@@ -121,20 +121,20 @@ def set_action(context,item=None):
         item = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
 
     for child in get_children(context,sprite_object,ob_list=[]):
+        if child.animation_data != None:
+            child.animation_data.action = None
+            child.animation_data_clear()
+            
         if child.type == "ARMATURE" and item.name == "Restpose":
             for bone in child.pose.bones:
                 bone.scale = Vector((1,1,1))
                 bone.location = Vector((0,0,0))
                 bone.rotation_euler = Euler((0,0,0),"XYZ")
                 bone.rotation_quaternion = Euler((0,0,0),"XYZ").to_quaternion()
-        if child.type == "MESH":
+        if child.type == "MESH" and item.name == "Restpose":
             child.coa_sprite_frame = 0
-            child.coa_alpha = 1.0        
-        
-        if not item.action_collection:
-            if child.animation_data != None:
-                child.animation_data.action = None
-                child.animation_data_clear()
+            child.coa_alpha = 1.0
+            child.coa_modulate_color = (1.0,1.0,1.0)
         else:
             action_name = item.name + "_" + child.name
             
@@ -373,6 +373,12 @@ def update_verts(context,obj):
 def set_z_value(context,obj,z):
     scale = get_addon_prefs(context).sprite_import_export_scale
     obj.location[1] = -z  * scale
+
+def set_modulate_color(obj,context,color):
+    if obj.type == "MESH":
+        if not obj.material_slots[0].material.use_object_color:
+            obj.material_slots[0].material.use_object_color = True
+        obj.color[:3] = color    
     
         
 def display_children(self, context, obj):

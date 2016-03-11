@@ -124,6 +124,7 @@ class AddKeyframe(bpy.types.Operator):
     
     prop_name = StringProperty()
     add_keyframe = BoolProperty(default=True)
+    interpolation = StringProperty(default="BEZIER")
     
     @classmethod
     def poll(cls, context):
@@ -137,6 +138,12 @@ class AddKeyframe(bpy.types.Operator):
                 for sprite in context.selected_objects:
                     if sprite.animation_data != None and sprite.animation_data.action != None:
                         sprite.keyframe_insert(self.prop_name)
+                        
+                        for fcurve in sprite.animation_data.action.fcurves:
+                            if self.prop_name in fcurve.data_path:
+                                for key in fcurve.keyframe_points:
+                                    if key.co[0] == context.scene.frame_current:
+                                        key.interpolation = self.interpolation
                     else:
                         create_action(context)
                         sprite.keyframe_insert(self.prop_name)
@@ -254,6 +261,14 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                     if obj != self:
                         obj.coa_alpha = self.coa_alpha
                     set_alpha(obj,context,self.coa_alpha)
+    
+    def set_modulate_color(self,context):
+        if context.scene.objects.active == self:
+            for obj in bpy.context.selected_objects:
+                if obj.type == "MESH":
+                    if obj != self:
+                        obj.coa_modulate_color = self.coa_modulate_color
+                    set_modulate_color(obj,context,self.coa_modulate_color)
             
     def set_sprite_frame(self,context):
         self.coa_sprite_frame = int(self.coa_sprite_frame_previews)
@@ -285,6 +300,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.Object.coa_sprite_frame_previews = EnumProperty(items = enum_sprite_previews,update=set_sprite_frame)
     bpy.types.Object.coa_tiles_changed = BoolProperty(default=False)
     bpy.types.Object.coa_sprite_updated = BoolProperty(default=False)
+    bpy.types.Object.coa_modulate_color = FloatVectorProperty(name="Modulate Color",description="Modulate color for sprites. This will tint your sprite with given color.",default=(1.0,1.0,1.0),min=0.0,max=1.0,soft_min=0.0,soft_max=1.0,size=3,subtype="COLOR",update=set_modulate_color)
     
     
     bpy.types.WindowManager.coa_running_modal = BoolProperty(default=False)
@@ -345,12 +361,23 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
                 op.prop_name = "coa_sprite_frame"
                 op.add_keyframe = True
+                op.interpolation = "CONSTANT"
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
                 op.prop_name = "coa_sprite_frame"
                 op.add_keyframe = False
                 #row.template_icon_view(obj, "coa_sprite_frame_previews")
             
             if obj != None and obj.type == "MESH":
+                row = layout.row(align=True)
+                row.prop(obj,'coa_z_value',text="Z Depth")
+                op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
+                op.prop_name = "coa_z_value"
+                op.add_keyframe = True
+                op.interpolation = "CONSTANT"
+                op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
+                op.prop_name = "coa_z_value"
+                op.add_keyframe = False
+                
                 row = layout.row(align=True)
                 row.prop(obj,'coa_alpha',text="Alpha",icon="TEXTURE")
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
@@ -361,12 +388,12 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                 op.add_keyframe = False
                 
                 row = layout.row(align=True)
-                row.prop(obj,'coa_z_value',text="Z Depth")
+                row.prop(obj,'coa_modulate_color',text="")
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
-                op.prop_name = "coa_z_value"
+                op.prop_name = "coa_modulate_color"
                 op.add_keyframe = True
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
-                op.prop_name = "coa_z_value"
+                op.prop_name = "coa_modulate_color"
                 op.add_keyframe = False
                 
                                 
@@ -675,6 +702,9 @@ class CutoutAnimationCollections(bpy.types.Panel):
         set_action(context)
         for obj in context.visible_objects:
             update_uv(context,obj)
+            set_alpha(obj,bpy.context,obj.coa_alpha)
+            set_z_value(context,obj,obj.coa_z_value)
+            set_modulate_color(obj,context,obj.coa_modulate_color)
         
     bpy.types.Object.coa_anim_collections_index = IntProperty(update=set_actions)
     

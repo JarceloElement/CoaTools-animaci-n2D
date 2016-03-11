@@ -84,9 +84,14 @@ class ImportSprite(bpy.types.Operator):
     
     def create_material(self,context,obj,name="Sprite"):
         mat = bpy.data.materials.new(name)
-        mat.use_shadeless = True
+        #mat.use_shadeless = True
         mat.use_transparency = True
         mat.alpha = 0.0
+        mat.specular_intensity = 0.0
+        mat.diffuse_intensity = 1.0
+        mat.emit = 1.0
+        mat.use_object_color = True
+        mat.diffuse_color = (1.0,1.0,1.0)
         obj.data.materials.append(mat)
         return mat
     

@@ -45,6 +45,7 @@ modules = developer_utils.setup_addon_modules(__path__, __name__)
 
 from . ui import *
 from . ui import preview_collections
+from . functions import *
 
 # register
 ################################## 
@@ -64,7 +65,25 @@ class ExampleAddonPreferences(bpy.types.AddonPreferences):
         layout.prop(self,"sprite_thumb_size")
 
 
+addon_keymaps = []
+def register_keymaps():
+    addon = bpy.context.window_manager.keyconfigs.addon
+    km = addon.keymaps.new(name = "3D View", space_type = "VIEW_3D")
+    # insert keymap items here
+    kmi = km.keymap_items.new("my_operator.select_frame_thumb", type = "F", value = "PRESS")
+    addon_keymaps.append(km)
+
+def unregister_keymaps():
+    wm = bpy.context.window_manager
+    for km in addon_keymaps:
+        for kmi in km.keymap_items:
+            km.keymap_items.remove(kmi)
+        wm.keyconfigs.addon.keymaps.remove(km)
+    addon_keymaps.clear()
+
+
 def register():
+    register_keymaps()
     import bpy.utils.previews
     pcoll2 = bpy.utils.previews.new() 
     pcoll2.my_previews = ()
@@ -97,6 +116,7 @@ def register():
     bpy.app.handlers.load_post.append(coa_startup)
     
 def unregister():
+    unregister_keymaps()
     for pcoll in preview_collections.values():
         bpy.utils.previews.remove(pcoll)
     preview_collections.clear()
@@ -116,11 +136,14 @@ def unregister():
 def update_sprites(dummy):
     bpy.context.scene.coa_ticker += 1
     try:
+        context = bpy.context
         for obj in bpy.context.visible_objects:
-            if "sprite" in obj and obj.animation_data != None and obj.animation_data.action != None:
+            if "sprite" in obj and obj.animation_data != None and obj.animation_data.action != None and obj.type == "MESH":
                 update_uv(bpy.context,obj)
                 set_alpha(obj,bpy.context,obj.coa_alpha)
                 set_z_value(context,obj,obj.coa_z_value)
+                set_modulate_color(obj,context,obj.coa_modulate_color)
+                
     except:
         pass
     if bpy.context.scene.coa_ticker%3 == 0:
