@@ -286,7 +286,7 @@ class Fill(bpy.types.Operator):
         ### assign texture to uv map
         if img != None:
             bpy.ops.object.mode_set(mode="OBJECT")
-            assign_tex_to_uv(self,img,start_obj.data.uv_textures.active)
+            assign_tex_to_uv(img,start_obj.data.uv_textures.active)
             bpy.ops.object.mode_set(mode="EDIT")
         
         bpy.ops.ed.undo_push(message="Grid Fill")
