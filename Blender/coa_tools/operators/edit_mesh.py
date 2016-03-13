@@ -279,6 +279,10 @@ class Fill(bpy.types.Operator):
         
         if self.triangulate:
             if not self.triangulate_fill(context):
+                bpy.ops.object.mode_set(mode="OBJECT")
+                context.scene.objects.active = start_obj
+                bpy.ops.object.join()
+                bpy.ops.object.mode_set(mode="EDIT")
                 self.report({"WARNING"},"Please select a closed vertex loop.")
         else:
             self.normal_fill(context)
