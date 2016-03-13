@@ -135,7 +135,6 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     
     def get_modulate_color(self,sprite_name):
         obj = bpy.data.objects[sprite_name]
-        print([obj.coa_modulate_color[0],obj.coa_modulate_color[1],obj.coa_modulate_color[2]])
         return [obj.coa_modulate_color[0],obj.coa_modulate_color[1],obj.coa_modulate_color[2]]
     
     def get_sprite_opacity(self,sprite_name):
