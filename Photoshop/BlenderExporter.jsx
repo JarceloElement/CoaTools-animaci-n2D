@@ -144,7 +144,6 @@ function export_sprites(export_path , export_name , crop_to_dialog_bounds , cent
                 var columns = parseInt(Math.sqrt(sprite_count)+0.5);
             }
             tile_size = [columns,parseInt(sprite_count/columns + 0.5)];
-            $.writeln(tile_size);
             if (layer_name[keyword_pos - 1] == "_"){
                 layer_name = layer_name.substring(0,keyword_pos - 1);
             }else{
