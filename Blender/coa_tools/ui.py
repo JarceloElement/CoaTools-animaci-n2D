@@ -444,21 +444,24 @@ class CutoutAnimationTools(bpy.types.Panel):
         else:
             row.prop(screen,"coa_lock_view",text="2D View",icon="MATPLANE")
         
-        row = layout.row(align=True)
-        row.label(text="General Operator:")
         
-        row = layout.row(align=True)
-        row.operator("wm.coa_create_ortho_cam",text="Create Ortho Camera", icon="OUTLINER_DATA_CAMERA")
+        if context.active_object == None or (context.active_object != None and context.active_object.mode == "OBJECT"):
+            row = layout.row(align=True)
+            row.label(text="General Operator:")
+            
+            row = layout.row(align=True)
+            op = row.operator("wm.coa_create_ortho_cam",text="Create Ortho Camera", icon="OUTLINER_DATA_CAMERA")
+            op.create = True
+        if obj != None and obj.type == "CAMERA":    
+            row = layout.row(align=True)
+            op = row.operator("wm.coa_create_ortho_cam",text="Reset Camera Resolution",icon="OUTLINER_DATA_CAMERA")
+            op.create = False
         
         if context.active_object == None or (context.active_object != None and context.active_object.mode not in ["EDIT","WEIGHT_PAINT"]):
             row = layout.row(align=True)
             row.operator("wm.coa_create_sprite_object",text="Create new Sprite Object",icon="TEXTURE_DATA")
         
-        
-        if obj != None and obj.type == "CAMERA":
-            row = layout.row(align=True)
-            op = row.operator("wm.coa_create_ortho_cam",text="Reset Camera Resolution",icon="OUTLINER_DATA_CAMERA")
-            op.create = False
+            
         
         if context.active_object != None and get_sprite_object(context.active_object) != None:
             if sprite_object.coa_edit_weights == False:

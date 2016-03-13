@@ -68,13 +68,12 @@ class CreateOrtpographicCamera(bpy.types.Operator):
         return wm.invoke_props_dialog(self)
         
     def execute(self, context):
-        active_object = context.active_object
-        context.scene.objects.active = None
         scene = context.scene
         if self.create:
+            context.scene.objects.active = None
             bpy.ops.object.camera_add(view_align=True, enter_editmode=False, location=(0, -10, 0), rotation=(radians(90), 0, 0))
-        context.scene.objects.active = active_object
-        cam = active_object
+        cam = context.active_object
+        context.scene.objects.active = cam
         cam.data.type = "ORTHO"
         scene.render.pixel_filter_type = "BOX"
         scene.render.alpha_mode = "TRANSPARENT"
