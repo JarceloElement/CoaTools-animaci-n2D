@@ -469,7 +469,13 @@ class DrawContour(bpy.types.Operator):
             bpy.context.scene.cursor_location = self.limit_cursor_by_bounds(context,event,bpy.context.scene.cursor_location)    
         
         ### Set Mouse click
-        if (event.value == 'PRESS' or event.value == 'CLICK') and event.type == 'LEFTMOUSE':
+        mouse_button = None
+        if context.user_preferences.inputs.select_mouse == "RIGHT":
+            mouse_button = 'LEFTMOUSE'
+        else:
+            mouse_button = 'RIGHTMOUSE'  
+        
+        if (event.value == 'PRESS' or event.value == 'CLICK') and event.type == mouse_button:
             self.mouse_press = True
             #return{'RUNNING_MODAL'}
         if (event.value == 'RELEASE' and event.type == 'MOUSEMOVE'):

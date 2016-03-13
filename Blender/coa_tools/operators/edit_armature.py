@@ -289,11 +289,16 @@ class QuickArmature(bpy.types.Operator):
         ob = context.active_object
         
         self.mouse_press_hist = self.mouse_press
-        ### Set Mouse click
-        if (event.value == 'PRESS') and event.type == 'LEFTMOUSE':
+        mouse_button = None
+        if context.user_preferences.inputs.select_mouse == "RIGHT":
+            mouse_button = 'LEFTMOUSE'
+        else:
+            mouse_button = 'RIGHTMOUSE'    
+        ### Set Mouse click 
+        if (event.value == 'PRESS') and event.type == mouse_button:
             self.mouse_press = True
             #return {'RUNNING_MODAL'}
-        elif event.value == 'RELEASE' and (event.type == 'LEFTMOUSE'):
+        elif event.value == 'RELEASE' and (event.type == mouse_button):
             self.mouse_press = False
         #print(event.value,"-----------",event.type)
         ### Cast Ray from mousePosition and set Cursor to hitPoint
