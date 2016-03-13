@@ -59,6 +59,7 @@ class EditWeights(bpy.types.Operator):
         self.armature = None
         self.active_object = None
         self.selected_objects = []
+        self.object_color_settings = {}
     
     def armature_set_mode(self,context,mode,select):
         global armature_select
@@ -105,11 +106,26 @@ class EditWeights(bpy.types.Operator):
             self.exit_edit_weights(context)
             self.sprite_object.coa_edit_weights = False
             bpy.ops.ed.undo_push(message="Enter Edit Weights")
+            self.disable_object_color(False)
             return {"FINISHED"}
             
         return {"PASS_THROUGH"}
     
+    def disable_object_color(self,disable):
+        sprite_object = get_sprite_object(bpy.context.active_object)
+        children = get_children(bpy.context,sprite_object,ob_list=[])
+        for obj in children:
+            if obj.type == "MESH":
+                if len(obj.material_slots) > 0:
+                    if disable:
+                        self.object_color_settings[obj.name] = obj.material_slots[0].material.use_object_color
+                        obj.material_slots[0].material.use_object_color = not disable
+                    else:
+                        obj.material_slots[0].material.use_object_color = self.object_color_settings[obj.name]
+                            
+    
     def invoke(self, context, event):
+        self.disable_object_color(True)
         context.window_manager.modal_handler_add(self)
         
         self.active_object = context.active_object
