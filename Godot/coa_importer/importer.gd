@@ -365,6 +365,8 @@ func import_animations(animations,owner):
 						anim_data.track_insert_key(idx,float(time),Vector2(value[0],-value[1]))
 					elif key.find("scale") != -1:
 						anim_data.track_insert_key(idx,float(time),Vector2(value[0],value[1]))
+					elif key.find("modulate") != -1:
+						anim_data.track_insert_key(idx,float(time),Color(value[0],value[1],value[2],1.0))
 				elif typeof(value) == TYPE_REAL:
 					if key.find("rot") != -1:
 						anim_data.track_insert_key(idx,float(time),rad2deg(value))
