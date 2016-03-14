@@ -3,7 +3,7 @@
 var doc = app.activeDocument;
 var layers = doc.layers;
 var coords = [];
-var exporter_version = "v1.0 Beta"
+var exporter_version = "v1.0 Beta";
 
 //Save Options for PNGs
 var options = new ExportOptionsSaveForWeb();
@@ -35,7 +35,7 @@ function save_coords(center_sprites,export_path, export_name){
         //json_file.writeln(key+" = ("+coords[key][0]+","+coords[key][1]+")");
         var line = '    {"'+coords[i][0]+'":{"name":"'+coords[i][0]+'","pos":['+coords[i][1][0]+','+coords[i][1][1]+','+coords[i][1][2]+'],"tilesize":['+coords[i][2][0]+','+coords[i][2][1]+']}}';
         if(i < coords.length-1){
-            line += ","
+            line += ",";
         }    
         json_file.writeln(line);
     }
@@ -115,7 +115,7 @@ function export_sprites(export_path , export_name , crop_to_dialog_bounds , cent
         var layer_pos = Array(layer.bounds[0].as("px"),i,layer.bounds[1].as("px"));
         var tmp_doc = app.activeDocument;
         var layer_name = String(layer.name).split(' ').join('_');
-        var tile_size = [1,1]        
+        var tile_size = [1,1];
         var tmp_doc = app.documents.add( dupli_doc.width , dupli_doc.height , dupli_doc.resolution , layer_name , NewDocumentMode.RGB , DocumentFill.TRANSPARENT );
     
         app.activeDocument = dupli_doc;
@@ -196,7 +196,7 @@ function path_button(){
     }
 }    
 
-var win = new Window("dialog", 'Json Exporter '+exporter_version, [0,0,445,117], );
+var win = new Window("dialog", 'Json Exporter '+exporter_version, [0,0,445,117]);
 with(win){
 	win.export_path = add( "edittext", [85,15,365,35], 'export_path' );
 	win.sText = add( "statictext", [5,20,75,40], 'Export Path:' );
