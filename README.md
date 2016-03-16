@@ -1,3 +1,7 @@
+## About This Branch
+
+This forks purpose is to develop a GIMP exporter for CoaTools, that will then hopefully be merged back into the main development branch at (https://github.com/ndee85/coa_tools).
+
 <img src="./coa_tools_logo.png" width="250">
 
 # Cutout Animation Tools - Documentation
