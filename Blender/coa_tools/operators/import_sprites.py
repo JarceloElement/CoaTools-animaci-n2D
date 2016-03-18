@@ -57,6 +57,7 @@ class ImportSprite(bpy.types.Operator):
     tilesize = FloatVectorProperty(default = Vector((1,1)),size=2)
     parent = StringProperty(name="Parent Object",default="None")
     
+    
     def create_mesh(self,context,name="Sprite",width=100,height=100,pos=Vector((0,0,0))):
         me = bpy.data.meshes.new(name)
         obj = bpy.data.objects.new(name,me)
@@ -184,17 +185,22 @@ class ImportSprites(bpy.types.Operator, ImportHelper):
             sprite_data = json.load(data_file)
             data_file.close()
             
-            sprite_object.name = sprite_data["object_name"]
-            for i,sprite in enumerate(sprite_data["sprites"]):
-                for param in sprite:
-                    filepath = os.path.join(folder, sprite[param]["name"])
+            if "name" in sprite_data:
+                sprite_object.name = sprite_data["name"]
+                
+            if "nodes" in sprite_data:
+                for i,sprite in enumerate(sprite_data["nodes"]):
+                    filepath = os.path.join(folder,sprite["resource_path"])
+                    pos = [sprite["position"][0],-sprite["z"],sprite["position"][1]]
+                    offset = [sprite["offset"][0],0,sprite["offset"][1]]
+                    parent = sprite_object.name
+                    tilesize = [sprite["tiles_x"],sprite["tiles_y"]]
+                    scale = get_addon_prefs(context).sprite_import_export_scale
                     
-                    tilesize = Vector((1,1))
-                    if "tilesize" in sprite[param]:
-                        tilesize = sprite[param]["tilesize"]
-                    bpy.ops.wm.coa_import_sprite(path=filepath,pos=sprite[param]["pos"],offset=sprite_data["offset"],parent=sprite_object.name,tilesize=tilesize,scale=get_addon_prefs(context).sprite_import_export_scale)
+                    bpy.ops.wm.coa_import_sprite(path = filepath, pos = pos, offset = offset, parent = parent, tilesize = tilesize, scale = scale)
                     obj = context.active_object
                     obj.parent = sprite_object
+                    
             context.scene.objects.active = sprite_object
         if not bpy.data.scenes[0].coa_lock_view:
             bpy.ops.view3d.viewnumpad(type="FRONT")

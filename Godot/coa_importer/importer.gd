@@ -203,8 +203,9 @@ func _create_imported_scene():
 		create_nodes(json_data["nodes"],src_scene,src_scene)
 		
 		### Import all Animations 
-		import_animations(json_data["animations"],src_scene)
-		src_scene = src_scene
+		if "animations" in json_data:
+			import_animations(json_data["animations"],src_scene)
+			src_scene = src_scene
 		
 		### if merging is enabled, make a clever update and preserve local changes, update imported nodes and delete not available nodes
 		if dst_scene != null and check_merge.is_pressed():
@@ -362,7 +363,7 @@ func import_animations(animations,owner):
 				var value = track[time]["value"]
 				if typeof(value) == TYPE_ARRAY:
 					if key.find("pos") != -1:
-						anim_data.track_insert_key(idx,float(time),Vector2(value[0],-value[1]))
+						anim_data.track_insert_key(idx,float(time),Vector2(value[0],value[1]))
 					elif key.find("scale") != -1:
 						anim_data.track_insert_key(idx,float(time),Vector2(value[0],value[1]))
 					elif key.find("modulate") != -1:
@@ -388,12 +389,15 @@ func create_nodes(nodes,parent,subparent,copy_images=true,i=0):
 	for node in nodes:
 		
 		var new_node
+		var offset = Vector2(0,0)
+		if "offset" in node:
+			offset = Vector2(node["offset"][0],node["offset"][1])
 		if node["type"] == "BONE":
 			bone_count += 1
 			new_node = Node2D.new()
 			new_node.set_meta("imported_from_blender",true)
 			new_node.set_name(node["name"])
-			new_node.set_pos(Vector2(node["position"][0],-node["position"][1]))
+			new_node.set_pos(Vector2(node["position"][0],node["position"][1]))
 			new_node.set_rot(node["rotation"])
 			new_node.set_scale(Vector2(node["scale"][0],node["scale"][1]))	
 			new_node.set_z(node["z"])
@@ -438,7 +442,7 @@ func create_nodes(nodes,parent,subparent,copy_images=true,i=0):
 			new_node.set_frame(node["frame_index"])
 			new_node.set_centered(false)
 			new_node.set_offset(Vector2(node["pivot_offset"][0],node["pivot_offset"][1]))
-			new_node.set_pos(Vector2(node["position"][0],-node["position"][1]))
+			new_node.set_pos(Vector2(node["position"][0]+offset[0],node["position"][1]+offset[0]))
 			new_node.set_rot(node["rotation"])
 			new_node.set_scale(Vector2(node["scale"][0],node["scale"][1]))
 			new_node.set_z(node["z"])

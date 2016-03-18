@@ -83,7 +83,6 @@ def unregister_keymaps():
 
 
 def register():
-    register_keymaps()
     import bpy.utils.previews
     pcoll2 = bpy.utils.previews.new() 
     pcoll2.my_previews = ()
@@ -114,9 +113,9 @@ def register():
     bpy.app.handlers.frame_change_post.append(update_sprites)    
     bpy.app.handlers.scene_update_pre.append(update_thumbs)
     bpy.app.handlers.load_post.append(coa_startup)
+    register_keymaps()
     
 def unregister():
-    unregister_keymaps()
     for pcoll in preview_collections.values():
         bpy.utils.previews.remove(pcoll)
     preview_collections.clear()
@@ -130,6 +129,7 @@ def unregister():
     bpy.app.handlers.frame_change_post.remove(update_sprites)
     bpy.app.handlers.scene_update_pre.remove(update_thumbs)
     bpy.app.handlers.load_post.remove(coa_startup)
+    unregister_keymaps()
     
          
 @persistent
@@ -162,16 +162,17 @@ def update_thumbs(dummy):
 def scene_update_callback(scene):
     bpy.app.handlers.scene_update_pre.remove(scene_update_callback)
     bpy.context.window_manager.coa_running_modal = False
-    bpy.ops.wm.coa_modal()  
+    bpy.ops.wm.coa_modal()
+    
+    if bpy.context.screen.coa_view == "2D":
+        set_middle_mouse_move(True)
+    elif bpy.context.screen.coa_view == "3D":
+        set_middle_mouse_move(False)
+        
 @persistent
 def coa_startup(dummy):
     print("startup coa modal operator")
     bpy.app.handlers.scene_update_pre.append(scene_update_callback)
-    
-    if bpy.data.scenes[0].coa_lock_view:
-        set_middle_mouse_move(True)
-    else:
-        set_middle_mouse_move(False)
 
 
 
