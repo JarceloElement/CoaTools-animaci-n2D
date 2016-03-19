@@ -202,7 +202,7 @@ class ImportSprites(bpy.types.Operator, ImportHelper):
                     obj.parent = sprite_object
                     
             context.scene.objects.active = sprite_object
-        if not bpy.data.scenes[0].coa_lock_view:
+        if bpy.context.screen.coa_view == "3D":
             bpy.ops.view3d.viewnumpad(type="FRONT")
         if context.space_data.region_3d.is_perspective:
             bpy.ops.view3d.view_persportho()
