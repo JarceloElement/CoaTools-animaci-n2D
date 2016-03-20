@@ -133,7 +133,8 @@ class QuickArmature(bpy.types.Operator):
             context.scene.objects.link(armature)
             context.scene.objects.active = armature
             armature.select = True
-            amt.draw_type = "BBONE"
+            armature.show_x_ray = True
+            #amt.draw_type = "BBONE"
             return armature
         
     def create_default_bone_group(self,armature):

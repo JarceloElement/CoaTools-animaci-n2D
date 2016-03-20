@@ -193,7 +193,7 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         if bone.parent == None:
             if type == "HEAD":
                 bone_pos = (((bone.matrix_local.to_4x4() * pose_bone.matrix_basis).to_translation())) * self.scale_multiplier
-                bone_pos_2d = [bone_pos[0],bone_pos[2]]
+                bone_pos_2d = [bone_pos[0],-bone_pos[2]]
             elif type == "TAIL":    
                 bone_pos = (bone.tail_local - bone.head_local) * self.scale_multiplier
                 bone_pos_2d = [bone_pos[0],bone_pos[2]]
@@ -201,7 +201,7 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         else:
             if type == "HEAD":
                 bone_pos = (((bone.matrix_local.to_4x4() * pose_bone.matrix_basis).to_translation()) - (bone.parent.matrix_local.to_4x4().to_translation())) * self.scale_multiplier
-                bone_pos_2d = [bone_pos[0],bone_pos[2]]
+                bone_pos_2d = [bone_pos[0],-bone_pos[2]]
             elif type == "TAIL":
                 bone_pos = (bone.tail_local - bone.head_local) * self.scale_multiplier
                 bone_pos_2d = [bone_pos[0],bone_pos[2]]
@@ -223,7 +223,7 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         else:
             relative_pos = obj.matrix_local.to_translation() * self.scale_multiplier
             
-        relative_pos_2d = [relative_pos[0],relative_pos[2]]
+        relative_pos_2d = [relative_pos[0],-relative_pos[2]]
         return relative_pos_2d
     
     ### get the sprite resource path and copy image resources in a subfolder of the json location
@@ -525,13 +525,14 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         
         
         ### store frame and animation state
-        current_anim_collection = self.sprite_object.coa_anim_collections[self.sprite_object.coa_anim_collections_index]
-        current_time_frame = context.scene.frame_current
-        current_active_object = context.active_object
-        current_selected_objects = []
-        for obj in context.scene.objects:
-            if obj.select:
-                current_selected_objects.append(obj)
+        if len(self.sprite_object.coa_anim_collections) > 0:
+            current_anim_collection = self.sprite_object.coa_anim_collections[self.sprite_object.coa_anim_collections_index]
+            current_time_frame = context.scene.frame_current
+            current_active_object = context.active_object
+            current_selected_objects = []
+            for obj in context.scene.objects:
+                if obj.select:
+                    current_selected_objects.append(obj)
         
         
         ### start export from here
@@ -612,11 +613,12 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         
         
         ### restore frame and animation state
-        set_action(context,item=current_anim_collection)
-        context.scene.frame_current = current_time_frame
-        context.scene.objects.active = current_active_object
-        for obj in current_selected_objects:
-            obj.select = True
+        if len(self.sprite_object.coa_anim_collections) > 0:
+            set_action(context,item=current_anim_collection)
+            context.scene.frame_current = current_time_frame
+            context.scene.objects.active = current_active_object
+            for obj in current_selected_objects:
+                obj.select = True
         
         self.report({'INFO'},"Json Export done.")
         bpy.ops.ed.undo_push(message="Export Json")

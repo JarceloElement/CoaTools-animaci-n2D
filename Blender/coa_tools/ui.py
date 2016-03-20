@@ -124,15 +124,21 @@ class AddKeyframe(bpy.types.Operator):
     
     prop_name = StringProperty()
     add_keyframe = BoolProperty(default=True)
-    interpolation = StringProperty(default="BEZIER")
+    interpolation = EnumProperty(default="BEZIER",items=(("BEZIER","BEZIER","BEZIER","IPO_BEZIER",0),("LINEAR","LINEAR","LINEAR","IPO_LINEAR",1),("CONSTANT","CONSTANT","CONSTANT","IPO_CONSTANT",2)))
     
     @classmethod
     def poll(cls, context):
         return True
 
-    def execute(self, context):
+    def draw(self,context):
+        layout = self.layout
+        row = layout.row()
+        row.prop(self,"interpolation",expand=True)
+    
+    def create_keyframe(self,context):
         sprite = context.active_object
         sprite_object = get_sprite_object(sprite)
+        
         if sprite_object.coa_anim_collections_index > 1:
             if self.add_keyframe:
                 for sprite in context.selected_objects:
@@ -166,7 +172,20 @@ class AddKeyframe(bpy.types.Operator):
                         self.report({'WARNING'},str("Sprite has no Animation assigned."))
         else:
             self.report({'WARNING'},str("No Animation selected"))
-        return {"FINISHED"}
+    
+    #def execute(self, context):
+    def invoke(self,context,event):
+        wm = context.window_manager
+        if event.ctrl:
+            return wm.invoke_props_dialog(self)
+        else:
+            self.create_keyframe(context)
+            return {"FINISHED"}
+        
+    def execute(self,context):
+        print("ctrl pressed")
+        self.create_keyframe(context) 
+        return {"FINISHED"}   
         
 
 def enum_sprite_previews(self, context):
@@ -414,13 +433,13 @@ class CutoutAnimationTools(bpy.types.Panel):
     def lock_view(self,context):
         region_3d = context.space_data.region_3d
         screen = context.screen
-        if screen.coa_lock_view == False:
+        if screen.coa_view == "3D":
             set_middle_mouse_move(False)
             set_view(screen,"3D")
+        elif screen.coa_view == "2D":
+            set_middle_mouse_move(True)
+            set_view(screen,"2D")
 
-    
-        
-                    
     bpy.types.Scene.coa_distance = FloatProperty(description="Set the asset distance for each Paint Stroke",default = 1.0,min=-.0, max=30.0)
     bpy.types.Scene.coa_detail = FloatProperty(description="Detail",default = .3,min=0,max=1.0)
     bpy.types.Scene.coa_snap_distance = FloatProperty(description="Snap Distance",default = 0.01,min=0)
@@ -428,8 +447,8 @@ class CutoutAnimationTools(bpy.types.Panel):
     bpy.types.Scene.coa_automerge = BoolProperty(default=False)
     bpy.types.Scene.coa_distance_constraint = BoolProperty(default=True,description="Constraint Distance to Viewport")
     bpy.types.Scene.coa_lock_to_bounds = BoolProperty(default=True,description="Lock Cursor to Object Bounds")
-    bpy.types.Scene.coa_lock_view = BoolProperty(default=False, description="Locks the View to an Orthographic Front View",update=lock_view)
-    bpy.types.Screen.coa_lock_view = BoolProperty(default=False, description="Locks the View to an Orthographic Front View",update=lock_view)
+    
+    bpy.types.Screen.coa_view = EnumProperty(default="3D",items=(("3D","3D View","3D","MESH_CUBE",0),("2D","2D View","2D","MESH_PLANE",1)),update=lock_view)
     
     def draw(self, context):
         layout = self.layout
@@ -439,11 +458,7 @@ class CutoutAnimationTools(bpy.types.Panel):
         screen = context.screen
         
         row = layout.row(align=True)
-        if screen.coa_lock_view == False:
-            row.operator("scene.coa_lock_view",text="3D View",icon="MESH_CUBE")
-        else:
-            row.prop(screen,"coa_lock_view",text="2D View",icon="MATPLANE")
-        
+        row.prop(screen,"coa_view",expand=True)
         
         if context.active_object == None or (context.active_object != None and context.active_object.mode == "OBJECT"):
             row = layout.row(align=True)
@@ -568,22 +583,7 @@ class UIListAnimationCollections(bpy.types.UIList):
             col.label(icon="ARMATURE_DATA")    
             col.label(text=item.name)
         
-                
-######################################################################################################################################### Lock View
-class LockView(bpy.types.Operator):
-    bl_idname = "scene.coa_lock_view"
-    bl_label = "Lock View"
-    bl_options = {"REGISTER"}
-                
-    def execute(self,context):
-        screen = context.screen
-        region_3d = context.space_data.region_3d
-        screen.coa_lock_view = True
-        
-        set_view(screen,"2D")
-        
-        set_middle_mouse_move(True)
-        return{'FINISHED'}
+
 
 ######################################################################################################################################### Select Child Operator
 class SelectChild(bpy.types.Operator):
