@@ -118,7 +118,7 @@ class COAModal(bpy.types.Operator):
             elif screen.coa_view == "3D":
                 set_middle_mouse_move(False)
                 
-            if active_object != None and "sprite" in active_object:    
+            if active_object != None and "sprite" in active_object and active_object.mode == "OBJECT":    
                 set_alpha(active_object,bpy.context,active_object.coa_alpha)
                 set_z_value(context,active_object,active_object.coa_z_value)
                 set_modulate_color(active_object,context,active_object.coa_modulate_color)

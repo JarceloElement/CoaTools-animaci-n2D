@@ -358,10 +358,10 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                         else:
                             row.prop(sprite_object,"coa_show_export_box",text="Json Export Properties",icon="TRIA_RIGHT",emboss=False)    
             
-            if obj != None and obj.type == "MESH":
+            if obj != None and obj.type == "MESH" and obj.mode == "OBJECT":
                 row = layout.row(align=True)
                 row.label(text="Sprite Properties:")
-            if obj != None and obj.type == "MESH" and len(obj.data.vertices) == 4:
+            if obj != None and obj.type == "MESH" and len(obj.data.vertices) == 4 and obj.mode == "OBJECT":
                 
                 row = layout.row(align=True)
                 text = str(obj.coa_tiles_x * obj.coa_tiles_y) + " Frame(s) total"
@@ -386,7 +386,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                 op.add_keyframe = False
                 #row.template_icon_view(obj, "coa_sprite_frame_previews")
             
-            if obj != None and obj.type == "MESH":
+            if obj != None and obj.type == "MESH" and obj.mode == "OBJECT":
                 row = layout.row(align=True)
                 row.prop(obj,'coa_z_value',text="Z Depth")
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")

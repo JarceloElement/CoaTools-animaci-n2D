@@ -58,6 +58,12 @@ function write_line(tabs,text){
 }    
 
 function save_coords(center_sprites,export_path, export_name){
+    if (win.center_sprites.value){
+        var offset = [doc.width.as("px")*-.5+','+doc.height.as("px")*.5];
+    }else{
+        var offset = [0,0];
+    }    
+    
     var json_file = new File(export_path+"/"+export_name+".json");
     json_file.open('w');
     
@@ -72,7 +78,7 @@ function save_coords(center_sprites,export_path, export_name){
         json_file.writeln( write_dict_entry( tabs = 3, key = "node_path", value = coords[i][0]));
         json_file.writeln( write_dict_entry( tabs = 3, key = "resource_path", value = "sprites/"+coords[i][0]));
         json_file.writeln( write_dict_entry( tabs = 3, key = "pivot_offset", value = [0,0]));
-        json_file.writeln( write_dict_entry( tabs = 3, key = "offset", value = [doc.width.as("px")*-.5+','+doc.height.as("px")*.5]));
+        json_file.writeln( write_dict_entry( tabs = 3, key = "offset", value = offset));
         json_file.writeln( write_dict_entry( tabs = 3, key = "position", value = [ coords[i][1][0],coords[i][1][2] ]));
         json_file.writeln( write_dict_entry( tabs = 3, key = "rotation", value = 0.0 ));
         json_file.writeln( write_dict_entry( tabs = 3, key = "scale", value = [1.0,1.0] ));
@@ -301,9 +307,9 @@ function export_sprites(export_path , export_name , crop_to_dialog_bounds , cent
         // close tmp doc again
         tmp_doc.close(SaveOptions.DONOTSAVECHANGES);
     }
-    app.preferences.rulerUnits = init_units;
     dupli_doc.close(SaveOptions.DONOTSAVECHANGES);
     save_coords(center_sprites,export_path, export_name);
+    app.preferences.rulerUnits = init_units;
 } 
 
 function export_button(){
