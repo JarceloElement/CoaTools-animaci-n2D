@@ -227,7 +227,7 @@ function export_sprites(export_path , export_name , crop_to_dialog_bounds , cent
             var margin_str_index = layer_name.indexOf("m=")+2;
             margin = parseInt(layer_name.substring(margin_str_index,layer_name.length));
         }
-        var layer_pos = Array(bounds[0] - margin,i,bounds[1] - margin);
+        var layer_pos = Array(bounds[0] - margin,-i,bounds[1] - margin);
         var tmp_doc = app.activeDocument;
         var tile_size = [1,1];
         var tmp_doc = app.documents.add( dupli_doc.width , dupli_doc.height , dupli_doc.resolution , layer_name , NewDocumentMode.RGB , DocumentFill.TRANSPARENT );
