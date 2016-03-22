@@ -18,17 +18,6 @@ Created by Andreas Esau
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-bl_info = {
-    "name": "Cutout Animation Tools",
-    "description": "This Addon provides a Toolset for a 2D Animation Workflow.",
-    "author": "Andreas Esau",
-    "version": (0, 1, 0, "Alpha"),
-    "blender": (2, 75, 0),
-    "location": "View 3D > Tools > Cutout Animation Tools",
-    "warning": "This addon is still in development.",
-    "wiki_url": "",
-    "category": "Ndee Tools" }
-    
 import bpy
 import bpy_extras
 import bpy_extras.view3d_utils
@@ -136,7 +125,11 @@ class RemoveAnimationCollection(bpy.types.Operator):
                     child.animation_data_clear()
                 bpy.data.actions[action_name].use_fake_user = False
                 bpy.data.actions[action_name].user_clear()    
-                #bpy.data.actions.remove(bpy.data.actions[action_name])
+                bpy.data.actions.remove(bpy.data.actions[action_name])
+        for area in context.screen.areas:
+            if area.type == "DOPESHEETH_EDITOR":
+                area.tag_redraw()
+        context.scene.update()               
             
                     
     def execute(self, context):

@@ -17,17 +17,6 @@ Created by Andreas Esau
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-
-bl_info = {
-    "name": "Cutout Animation Tools",
-    "description": "This Addon provides a Toolset for a 2D Animation Workflow.",
-    "author": "Andreas Esau",
-    "version": (0, 1, 0, "Alpha"),
-    "blender": (2, 75, 0),
-    "location": "View 3D > Tools > Cutout Animation Tools",
-    "warning": "This addon is still in development.",
-    "wiki_url": "",
-    "category": "Ndee Tools" }
     
 import bpy
 import bpy_extras
@@ -297,8 +286,11 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.Object.coa_tiles_x = IntProperty(description="X Tileset",default = 1,min=1,update=change_tilesize)
     bpy.types.Object.coa_tiles_y = IntProperty(description="Y Tileset",default = 1,min=1,update=change_tilesize)
     bpy.types.Object.coa_sprite_frame = IntProperty(description="Frame",default = 0,min=0,update=update_uv)
+    bpy.types.Object.coa_sprite_frame_last = IntProperty(description="Frame",default = 0,min=0)
     bpy.types.Object.coa_z_value = IntProperty(description="Z Depth",default=0,update=set_z_value)
+    bpy.types.Object.coa_z_value_last = IntProperty(default=0)
     bpy.types.Object.coa_alpha = FloatProperty(default=1.0,min=0.0,max=1.0,update=set_alpha)
+    bpy.types.Object.coa_alpha_last = FloatProperty(default=1.0,min=0.0,max=1.0)
     bpy.types.Object.coa_show_bones = BoolProperty()
     bpy.types.Object.coa_filter_names = StringProperty()
     bpy.types.Object.coa_favorite = BoolProperty()
@@ -320,7 +312,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.Object.coa_tiles_changed = BoolProperty(default=False)
     bpy.types.Object.coa_sprite_updated = BoolProperty(default=False)
     bpy.types.Object.coa_modulate_color = FloatVectorProperty(name="Modulate Color",description="Modulate color for sprites. This will tint your sprite with given color.",default=(1.0,1.0,1.0),min=0.0,max=1.0,soft_min=0.0,soft_max=1.0,size=3,subtype="COLOR",update=set_modulate_color)
-    
+    bpy.types.Object.coa_modulate_color_last = FloatVectorProperty(default=(1.0,1.0,1.0),min=0.0,max=1.0,soft_min=0.0,soft_max=1.0,size=3,subtype="COLOR")
     
     bpy.types.WindowManager.coa_running_modal = BoolProperty(default=False)
     
@@ -431,8 +423,9 @@ class CutoutAnimationTools(bpy.types.Panel):
             bpy.context.scene.tool_settings.use_snap = False
     
     def lock_view(self,context):
-        region_3d = context.space_data.region_3d
         screen = context.screen
+        if "-nonnormal" in self.name:
+            bpy.data.screens[context.screen.name.split("-nonnormal")[0]].coa_view = self.coa_view
         if screen.coa_view == "3D":
             set_middle_mouse_move(False)
             set_view(screen,"3D")

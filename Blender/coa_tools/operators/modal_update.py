@@ -17,17 +17,6 @@ Created by Andreas Esau
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-
-bl_info = {
-    "name": "Cutout Animation Tools",
-    "description": "This Addon provides a Toolset for a 2D Animation Workflow.",
-    "author": "Andreas Esau",
-    "version": (0, 1, 0, "Alpha"),
-    "blender": (2, 75, 0),
-    "location": "View 3D > Tools > Cutout Animation Tools",
-    "warning": "This addon is still in development.",
-    "wiki_url": "",
-    "category": "Ndee Tools" }
     
 import bpy
 import bpy_extras
@@ -69,7 +58,7 @@ class COAModal(bpy.types.Operator):
     
     
     def check_event_value(self,event):
-        if event.value == "PRESS" and self.value_hist in ["RELEASE","NOTHING"]:
+        if event.value == "PRESS" and self.value_hist != "PRESS":#and self.value_hist in ["RELEASE","NOTHING"]:
             self.value_pressed = True
             return "JUST_PRESSED"
         elif event.value != "RELEASE" and self.value_pressed:
@@ -93,7 +82,15 @@ class COAModal(bpy.types.Operator):
                 elif event.type in ["RIGHTMOUSE","ESC"]:
                     self.scaling = False
                     return "SCALE_CANCELLED"
-    
+                
+    def set_view_front(self,context):
+        for area in context.screen.areas:
+            if area.type == "VIEW_3D":
+                for space in area.spaces:
+                    if space.type == "VIEW_3D":
+                        region = space.region_3d
+                        region.view_rotation = Quaternion((0.7071,0.7071,-0.0,-0.0))
+                                
     def modal(self,context,event):
         ### execute only if an event pressed is triggered
         active_object = context.active_object
@@ -108,20 +105,33 @@ class COAModal(bpy.types.Operator):
             screen = context.screen    
             if screen.coa_view == "2D":
                 set_middle_mouse_move(True)
+                self.set_view_front(context)
             elif screen.coa_view == "3D":
                 set_middle_mouse_move(False)
                 
         elif self.check_event_value(event) == "JUST_RELEASED":
             screen = context.screen
+            if "-nonnormal" in context.screen.name:
+                context.screen.coa_view = bpy.data.screens[context.screen.name.split("-nonnormal")[0]].coa_view
             if screen.coa_view == "2D":
                 set_middle_mouse_move(True)
+                self.set_view_front(context)
             elif screen.coa_view == "3D":
                 set_middle_mouse_move(False)
+            
                 
-            if active_object != None and "sprite" in active_object and active_object.mode == "OBJECT":    
-                set_alpha(active_object,bpy.context,active_object.coa_alpha)
-                set_z_value(context,active_object,active_object.coa_z_value)
-                set_modulate_color(active_object,context,active_object.coa_modulate_color)
+                
+            if active_object != None and "sprite" in active_object and active_object.mode == "OBJECT":
+                obj = active_object
+                if obj.coa_alpha != obj.coa_alpha_last:
+                    set_alpha(obj,bpy.context,obj.coa_alpha)
+                    obj.coa_alpha_last = obj.coa_alpha
+                if obj.coa_z_value != obj.coa_z_value_last:
+                    set_z_value(context,obj,obj.coa_z_value)
+                    obj.coa_z_value_last = obj.coa_z_value
+                if obj.coa_modulate_color != obj.coa_modulate_color_last:
+                    set_modulate_color(obj,context,obj.coa_modulate_color)
+                    obj.coa_modulate_color_last = obj.coa_modulate_color
                 
                 
         
@@ -134,7 +144,6 @@ class COAModal(bpy.types.Operator):
             bpy.ops.object.mode_set(mode="EDIT")
             active_object.coa_sprite_dimension = Vector((get_local_dimension(active_object)[0],0,get_local_dimension(active_object)[1]))
         ###
-        
         self.value_hist = str(event.value)
         self.type_hist = str(event.type)
         return{'PASS_THROUGH'}

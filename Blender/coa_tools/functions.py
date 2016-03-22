@@ -17,17 +17,6 @@ Created by Andreas Esau
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-
-bl_info = {
-    "name": "Cutout Animation Tools",
-    "description": "This Addon provides a Toolset for a 2D Animation Workflow.",
-    "author": "Andreas Esau",
-    "version": (0, 1, 0, "Alpha"),
-    "blender": (2, 75, 0),
-    "location": "View 3D > Tools > Cutout Animation Tools",
-    "warning": "This addon is still in development.",
-    "wiki_url": "",
-    "category": "Ndee Tools" }
     
 import bpy
 import bpy_extras
@@ -204,19 +193,35 @@ def set_alpha(obj,context,alpha):
                 if tex_slot != None:
                     tex_slot.alpha_factor = alpha
                     
+
+def lock_view(screen,lock):
+    for area in screen.areas:
+        if area.type == "VIEW_3D":
+            for space in area.spaces:
+                if space.type == "VIEW_3D":
+                    region = space.region_3d
+                    if lock:
+                        region.view_rotation = Quaternion((0.7071,0.7071,-0.0,-0.0))                        
+                        region.lock_rotation = True
+                    else:
+                        region.lock_rotation = False    
                     
 def set_view(screen,mode):
     if mode == "2D":
         active_space_data = bpy.context.space_data
-        region_3d = active_space_data.region_3d
-        bpy.ops.view3d.viewnumpad(type='FRONT')
-        if region_3d.view_perspective != "ORTHO":
-            bpy.ops.view3d.view_persportho()
+        if active_space_data != None:
+            if hasattr(active_space_data,"region_3d"):
+                region_3d = active_space_data.region_3d
+                bpy.ops.view3d.viewnumpad(type='FRONT')
+                if region_3d.view_perspective != "ORTHO":
+                    bpy.ops.view3d.view_persportho()  
     elif mode == "3D":
         active_space_data = bpy.context.space_data
-        region_3d = active_space_data.region_3d
-        if region_3d.view_perspective == "ORTHO":
-            bpy.ops.view3d.view_persportho()        
+        if active_space_data != None:
+            if hasattr(active_space_data,"region_3d"):
+                region_3d = active_space_data.region_3d
+                if region_3d.view_perspective == "ORTHO":
+                    bpy.ops.view3d.view_persportho()        
 
 
 def set_middle_mouse_move(enable):
@@ -318,7 +323,6 @@ def update_uv(context,obj):
         coord4 = obj.data.uv_layers[obj.data.uv_layers.active.name].data[3]
         
         sprite_object = get_sprite_object(obj)
-        #anim_data = sprite_object.coa_anim_data[obj.name]
         anim_data = obj
         
         frame_size = Vector((1 / anim_data.coa_tiles_x,1 / anim_data.coa_tiles_y))
@@ -335,7 +339,6 @@ def update_uv(context,obj):
         
         if obj == context.active_object and obj.type == "MESH":
             bpy.ops.object.mode_set(mode=mode_prev)
-        #obj.scale = Vector((1.0 / obj.coa_tiles_x,1,1.0 / obj.coa_tiles_y))
         
 def update_verts(context,obj):  
     if "sprite" in obj and len(obj.data.vertices) == 4:
@@ -359,7 +362,6 @@ def update_verts(context,obj):
         scale_y = round(obj.coa_sprite_dimension[2] / sprite_sheet_height,5)
         
         sprite_object = get_sprite_object(obj)
-        #anim_data = sprite_object.coa_anim_data[obj.name]
         anim_data = obj
         
         for vert in obj.data.vertices:

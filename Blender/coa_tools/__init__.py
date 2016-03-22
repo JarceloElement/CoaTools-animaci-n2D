@@ -135,18 +135,29 @@ def unregister():
 @persistent
 def update_sprites(dummy):
     bpy.context.scene.coa_ticker += 1
+    update_scene = False
     try:
         context = bpy.context
+                    
         for obj in bpy.context.visible_objects:
             if "sprite" in obj and obj.animation_data != None and obj.animation_data.action != None and obj.type == "MESH":
-                update_uv(bpy.context,obj)
-                set_alpha(obj,bpy.context,obj.coa_alpha)
-                set_z_value(context,obj,obj.coa_z_value)
-                set_modulate_color(obj,context,obj.coa_modulate_color)
+                if obj.coa_sprite_frame != obj.coa_sprite_frame_last:
+                    update_uv(bpy.context,obj)
+                    obj.coa_sprite_frame_last = obj.coa_sprite_frame
+                if obj.coa_alpha != obj.coa_alpha_last:
+                    set_alpha(obj,bpy.context,obj.coa_alpha)
+                    obj.coa_alpha_last = obj.coa_alpha
+                    update_scene = True
+                if obj.coa_z_value != obj.coa_z_value_last:
+                    set_z_value(context,obj,obj.coa_z_value)
+                    obj.coa_z_value_last = obj.coa_z_value
+                if obj.coa_modulate_color != obj.coa_modulate_color_last:
+                    set_modulate_color(obj,context,obj.coa_modulate_color)
+                    obj.coa_modulate_color_last = obj.coa_modulate_color
                 
     except:
         pass
-    if bpy.context.scene.coa_ticker%3 == 0:
+    if bpy.context.scene.coa_ticker%3 == 0 and update_scene:
         bpy.context.scene.update()
 
 @persistent
