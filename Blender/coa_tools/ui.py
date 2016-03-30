@@ -114,6 +114,7 @@ class AddKeyframe(bpy.types.Operator):
     prop_name = StringProperty()
     add_keyframe = BoolProperty(default=True)
     interpolation = EnumProperty(default="BEZIER",items=(("BEZIER","BEZIER","BEZIER","IPO_BEZIER",0),("LINEAR","LINEAR","LINEAR","IPO_LINEAR",1),("CONSTANT","CONSTANT","CONSTANT","IPO_CONSTANT",2)))
+    default_interpolation = StringProperty()
     
     @classmethod
     def poll(cls, context):
@@ -124,7 +125,7 @@ class AddKeyframe(bpy.types.Operator):
         row = layout.row()
         row.prop(self,"interpolation",expand=True)
     
-    def create_keyframe(self,context):
+    def create_keyframe(self,context,event):
         sprite = context.active_object
         sprite_object = get_sprite_object(sprite)
         
@@ -138,7 +139,10 @@ class AddKeyframe(bpy.types.Operator):
                             if self.prop_name in fcurve.data_path:
                                 for key in fcurve.keyframe_points:
                                     if key.co[0] == context.scene.frame_current:
-                                        key.interpolation = self.interpolation
+                                        if event == None:
+                                            key.interpolation = self.interpolation
+                                        else:
+                                            key.interpolation = self.default_interpolation    
                     else:
                         create_action(context)
                         sprite.keyframe_insert(self.prop_name)
@@ -168,12 +172,12 @@ class AddKeyframe(bpy.types.Operator):
         if event.ctrl:
             return wm.invoke_props_dialog(self)
         else:
-            self.create_keyframe(context)
+            self.create_keyframe(context,event)
             return {"FINISHED"}
         
     def execute(self,context):
-        print("ctrl pressed")
-        self.create_keyframe(context) 
+        event = None
+        self.create_keyframe(context,event) 
         return {"FINISHED"}   
         
 
@@ -279,14 +283,17 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                     set_modulate_color(obj,context,self.coa_modulate_color)
             
     def set_sprite_frame(self,context):
+        self.coa_sprite_frame_last = -1
         self.coa_sprite_frame = int(self.coa_sprite_frame_previews)
+        if context.scene.tool_settings.use_keyframe_insert_auto:
+            bpy.ops.my_operator.add_keyframe(prop_name="coa_sprite_frame",interpolation="CONSTANT")
         
     bpy.types.Object.coa_dimensions_old = FloatVectorProperty()
     bpy.types.Object.coa_sprite_dimension = FloatVectorProperty()
     bpy.types.Object.coa_tiles_x = IntProperty(description="X Tileset",default = 1,min=1,update=change_tilesize)
     bpy.types.Object.coa_tiles_y = IntProperty(description="Y Tileset",default = 1,min=1,update=change_tilesize)
     bpy.types.Object.coa_sprite_frame = IntProperty(description="Frame",default = 0,min=0,update=update_uv)
-    bpy.types.Object.coa_sprite_frame_last = IntProperty(description="Frame",default = 0,min=0)
+    bpy.types.Object.coa_sprite_frame_last = IntProperty(description="Frame")
     bpy.types.Object.coa_z_value = IntProperty(description="Z Depth",default=0,update=set_z_value)
     bpy.types.Object.coa_z_value_last = IntProperty(default=0)
     bpy.types.Object.coa_alpha = FloatProperty(default=1.0,min=0.0,max=1.0,update=set_alpha)
@@ -294,6 +301,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.Object.coa_show_bones = BoolProperty()
     bpy.types.Object.coa_filter_names = StringProperty()
     bpy.types.Object.coa_favorite = BoolProperty()
+    bpy.types.Object.coa_animation_loop = BoolProperty(default=False,description="Sets the Timeline frame to 0 when it reaches the end of the animation. Also works for changing frame with cursor keys.")
     bpy.types.Bone.coa_favorite = BoolProperty()
     bpy.types.Object.coa_edit_weights = BoolProperty(default=False)
     bpy.types.Object.coa_edit_armature = BoolProperty(default=False)
@@ -372,7 +380,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
                 op.prop_name = "coa_sprite_frame"
                 op.add_keyframe = True
-                op.interpolation = "CONSTANT"
+                op.default_interpolation = "CONSTANT"
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
                 op.prop_name = "coa_sprite_frame"
                 op.add_keyframe = False
@@ -384,7 +392,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
                 op.prop_name = "coa_z_value"
                 op.add_keyframe = True
-                op.interpolation = "CONSTANT"
+                op.default_interpolation = "CONSTANT"
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
                 op.prop_name = "coa_z_value"
                 op.add_keyframe = False
@@ -394,6 +402,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
                 op.prop_name = "coa_alpha"
                 op.add_keyframe = True
+                op.default_interpolation = "BEZIER"
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
                 op.prop_name = "coa_alpha"
                 op.add_keyframe = False
@@ -403,6 +412,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE2")
                 op.prop_name = "coa_modulate_color"
                 op.add_keyframe = True
+                op.default_interpolation = "BEZIER"
                 op = row.operator("my_operator.add_keyframe",text="",icon="SPACE3")
                 op.prop_name = "coa_modulate_color"
                 op.add_keyframe = False
@@ -483,6 +493,9 @@ class CutoutAnimationTools(bpy.types.Panel):
                 row = layout.row(align=True)
                 row.label(text="Edit Operator:")
                 
+                if context.active_object.type == "ARMATURE" and context.active_object.mode == "POSE":
+                    row = layout.row(align=True)
+                    row.operator("bone.coa_draw_bone_shape",text="Draw Bone Shape",icon="BONE_DATA")
                 row = layout.row(align=True)
                 if sprite_object.coa_edit_mesh == False and sprite_object.coa_edit_armature == False and sprite_object.coa_edit_weights == False and not(obj.type == "MESH" and obj.mode=="EDIT"):  
                     row.operator("scene.coa_quick_armature",text="Edit Armature",icon="ARMATURE_DATA")
@@ -575,6 +588,11 @@ class UIListAnimationCollections(bpy.types.UIList):
         elif item.name == "Restpose":
             col.label(icon="ARMATURE_DATA")    
             col.label(text=item.name)
+        
+        if item.name not in ["NO ACTION","Restpose"]:    
+            col = layout.row(align=False)
+            op = col.operator("coa_operator.create_nla_track",icon="NLA",text="")
+            op.anim_collection_name = item.name
         
 
 
@@ -702,13 +720,67 @@ class CutoutAnimationCollections(bpy.types.Panel):
             set_z_value(context,obj,obj.coa_z_value)
             set_modulate_color(obj,context,obj.coa_modulate_color)
         
+    
+    def set_nla_mode(self,context):
+        sprite_object = get_sprite_object(context.active_object)
+        children = get_children(context,sprite_object,ob_list=[])
+        if self.coa_nla_mode == "NLA":
+            for child in children:
+                if child.animation_data != None:
+                    child.animation_data.action = None
+            context.scene.frame_start = context.scene.coa_frame_start
+            context.scene.frame_end = context.scene.coa_frame_end        
+            
+            for child in children:
+                if child.animation_data != None:
+                    for track in child.animation_data.nla_tracks:
+                        track.mute = False
+        else:
+            anim_collection = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
+            context.scene.frame_start = anim_collection.frame_start
+            context.scene.frame_end = anim_collection.frame_end
+            set_action(context)            
+            for obj in context.visible_objects:
+                update_uv(context,obj)
+                set_alpha(obj,bpy.context,obj.coa_alpha)
+                set_z_value(context,obj,obj.coa_z_value)
+                set_modulate_color(obj,context,obj.coa_modulate_color)
+            for child in children:
+                if child.animation_data != None:
+                    for track in child.animation_data.nla_tracks:
+                        track.mute = True
+                
+    
+    
+    
+    def update_frame_range(self,context):
+        sprite_object = get_sprite_object(context.active_object)
+        anim_collection = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
+        context.scene.frame_start = self.coa_frame_start
+        context.scene.frame_end = self.coa_frame_end
+    
     bpy.types.Object.coa_anim_collections_index = IntProperty(update=set_actions)
+    bpy.types.Scene.coa_nla_mode = EnumProperty(description="Animation Mode. Can be set to NLA or Action to playback all NLA Strips or only Single Actions",items=(("ACTION","ACTION","ACTION","ACTION",0),("NLA","NLA","NLA","NLA",1)),update=set_nla_mode)
+    bpy.types.Scene.coa_frame_start = IntProperty(name="Frame Start",default=0,update=update_frame_range)
+    bpy.types.Scene.coa_frame_end = IntProperty(name="Frame End",default=250,update=update_frame_range)
     
     def draw(self, context):
         layout = self.layout
         obj = context.active_object
+        scene = context.scene
         sprite_object = get_sprite_object(obj)
         if obj != None and sprite_object != None:
+            
+            row = layout.row()
+            row.prop(sprite_object,"coa_animation_loop",text="Wrap Animation Playback")
+            
+            row = layout.row()
+            row.prop(scene,"coa_nla_mode",expand=True)
+            
+            row = layout.row(align=True)
+            row.prop(scene,"coa_frame_start")
+            row.prop(scene,"coa_frame_end")
+            
             row = layout.row()
             row.template_list("UIListAnimationCollections","dummy",sprite_object, "coa_anim_collections", sprite_object, "coa_anim_collections_index",rows=1,maxrows=10,type='DEFAULT')
             col = row.column(align=True)
@@ -718,9 +790,7 @@ class CutoutAnimationCollections(bpy.types.Panel):
             
             if  len(sprite_object.coa_anim_collections) > 0 and sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index].action_collection:
                 row = layout.row(align=True)
-                row.label(text="Animation Length")
-                row = layout.row(align=True)
-                row.prop(sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index],"frame_start",text="Start")
-                row.prop(sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index],"frame_end",text="End")    
+                row.prop(sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index],"frame_end",text="Animation Length")
+                #row.prop(sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index],"frame_end",text="End")    
 
 preview_collections = {}

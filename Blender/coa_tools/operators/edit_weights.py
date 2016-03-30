@@ -75,19 +75,17 @@ class EditWeights(bpy.types.Operator):
                 break
      
     def exit_edit_weights(self,context):
+        set_local_view(False)
         armature = get_armature(get_sprite_object(context.active_object))
         bpy.ops.object.mode_set(mode="OBJECT")
-        set_local_view(False)
         for i,bone_layer in enumerate(bone_layers):
             armature.data.layers[i] = bone_layer
         
         for obj in context.scene.objects:
             obj.select = False
         for obj in self.selected_objects:
-            obj.select = True        
-        context.scene.objects.active = self.active_object
-                
-            
+            obj.select = True            
+        context.scene.objects.active = self.active_object            
             
     def modal(self, context, event):
     
@@ -112,8 +110,10 @@ class EditWeights(bpy.types.Operator):
                     else:
                         obj.material_slots[0].material.use_object_color = self.object_color_settings[obj.name]
                             
-    
     def invoke(self, context, event):
+        
+        
+        bpy.ops.ed.undo_push(message="Edit Weights")
         self.disable_object_color(True)
         context.window_manager.modal_handler_add(self)
         
@@ -124,6 +124,7 @@ class EditWeights(bpy.types.Operator):
         self.sprite_object = get_sprite_object(self.obj)
         self.sprite_object.coa_edit_weights = True
         self.armature = get_armature(self.sprite_object)
+    
         bpy.ops.object.mode_set(mode="WEIGHT_PAINT")
             
         if self.armature != None:

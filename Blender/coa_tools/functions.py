@@ -32,6 +32,31 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 import json
 from bpy.app.handlers import persistent
 
+
+def get_uv_from_vert(uv_layer, v):
+    for l in v.link_loops:
+        if v.select:
+            uv_data = l[uv_layer]
+            return uv_data
+            
+def update_uv_unwrap(context):
+    obj = context.active_object
+    me = obj.data
+    bm = bmesh.from_edit_mesh(me)
+    
+    ### pin uv boundary vertex
+    uv_layer = bm.loops.layers.uv.active
+    for vert in bm.verts:
+        
+        uv_vert = get_uv_from_vert(uv_layer, vert)
+        if uv_vert != None:
+            print(vert.co.xz,"----",uv_vert.uv)
+
+
+    bmesh.update_edit_mesh(me)        
+    
+
+
 def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
 
@@ -40,6 +65,24 @@ def b_version_bigger_than(version):
         return True
     else:
         return False
+
+def check_region(context,event):
+    in_view_3d = False
+    if context.area != None:
+        if context.area.type == "VIEW_3D":
+            t_panel = context.area.regions[1]
+            n_panel = context.area.regions[3]
+            
+            view_3d_region_x = Vector((context.area.x + t_panel.width, context.area.x + context.area.width - n_panel.width))
+            view_3d_region_y = Vector((context.region.y, context.region.y+context.region.height))
+            
+            if event.mouse_x > view_3d_region_x[0] and event.mouse_x < view_3d_region_x[1] and event.mouse_y > view_3d_region_y[0] and event.mouse_y < view_3d_region_y[1]:
+                in_view_3d = True
+            else:
+                in_view_3d = False
+        else:
+            in_view_3d = False
+    return in_view_3d        
 
 def get_local_dimension(obj):
     x0 = 10000000000*10000000000
@@ -102,7 +145,7 @@ def create_action(context,item=None):
     if obj.animation_data == None:
         obj.animation_data_create()
     obj.animation_data.action = action
-    context.scene.update()    
+    context.scene.update()
         
 def set_action(context,item=None):
     sprite_object = get_sprite_object(context.active_object)
@@ -112,7 +155,6 @@ def set_action(context,item=None):
     for child in get_children(context,sprite_object,ob_list=[]):
         if child.animation_data != None:
             child.animation_data.action = None
-            child.animation_data_clear()
             
         if child.type == "ARMATURE" and item.name == "Restpose":
             for bone in child.pose.bones:
@@ -124,7 +166,7 @@ def set_action(context,item=None):
             child.coa_sprite_frame = 0
             child.coa_alpha = 1.0
             child.coa_modulate_color = (1.0,1.0,1.0)
-        else:
+        elif not (child.type == "MESH" and item.name == "Restpose") and context.scene.coa_nla_mode == "ACTION":
             action_name = item.name + "_" + child.name
             
             action = None
@@ -154,6 +196,7 @@ def set_local_view(local):
             else:
                 if area.spaces.active.local_view != None:
                     bpy.ops.view3d.localview()
+                    
 
 def actions_callback(self,context):
     actions = []
@@ -313,9 +356,9 @@ def get_children(context,obj,ob_list=[]):
 
                         
 def update_uv(context,obj):
-    if "sprite" in obj and len(obj.data.vertices) == 4:
+    if "coa_sprite" in obj and len(obj.data.vertices) == 4:
         mode_prev = obj.mode
-        if obj == context.active_object and obj.type == "MESH":
+        if hasattr(context,"active_object") and obj == context.active_object and obj.type == "MESH":
             bpy.ops.object.mode_set(mode="OBJECT")
         coord1 = obj.data.uv_layers[obj.data.uv_layers.active.name].data[0]
         coord2 = obj.data.uv_layers[obj.data.uv_layers.active.name].data[1]
@@ -337,22 +380,13 @@ def update_uv(context,obj):
         coord3.uv = Vector((1.0 / anim_data.coa_tiles_x,1.0 / anim_data.coa_tiles_y)) + offset + frame
         coord4.uv = Vector((0.0 / anim_data.coa_tiles_x,1.0 / anim_data.coa_tiles_y)) + offset + frame
         
-        if obj == context.active_object and obj.type == "MESH":
+        
+        if hasattr(context,"active_object") and obj == context.active_object and obj.type == "MESH":
             bpy.ops.object.mode_set(mode=mode_prev)
         
-def update_verts(context,obj):  
-    if "sprite" in obj and len(obj.data.vertices) == 4:
+def update_verts(context,obj):
+    if "coa_sprite" in obj and len(obj.data.vertices) == 4:
         mode_prev = obj.mode
-        armature = get_armature(get_sprite_object(obj))
-        pose_position = ""
-        if armature != None:
-            pose_position = armature.data.pose_position
-            armature.data.pose_position = "REST"
-            context.scene.objects.active = armature
-            mode = armature.mode
-            bpy.ops.object.mode_set(mode="EDIT")
-            bpy.ops.object.mode_set(mode=mode)
-            context.scene.objects.active = obj
         
         obj.coa_dimensions_old = Vector(obj.dimensions)
         sprite_sheet_width = obj.data.uv_textures[0].data[0].image.size[0]
@@ -368,8 +402,6 @@ def update_verts(context,obj):
             vert.co[0] = vert.co[0] / obj.coa_dimensions_old[0] * sprite_sheet_width / anim_data.coa_tiles_x * scale_x * obj.matrix_world.to_scale()[0]
             vert.co[2] = vert.co[2] / obj.coa_dimensions_old[2] * sprite_sheet_height / anim_data.coa_tiles_y * scale_y * obj.matrix_world.to_scale()[2]
             
-        if armature != None:
-            armature.data.pose_position = pose_position
         bpy.ops.object.mode_set(mode=mode_prev)    
 
 def set_z_value(context,obj,z):
@@ -419,9 +451,10 @@ def display_children(self, context, obj):
     
     
     if sprite_object.coa_show_children:    
-        for child in children:
+        for i,child in enumerate(children):
             if (obj.coa_favorite and child.coa_favorite) or not obj.coa_favorite:
                 if obj.coa_filter_names in child.name:
+                    
                     row = col.row(align=True)
                     row.separator()
                     row.separator()

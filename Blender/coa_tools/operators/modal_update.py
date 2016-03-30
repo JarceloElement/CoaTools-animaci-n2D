@@ -99,10 +99,10 @@ class COAModal(bpy.types.Operator):
             self.sprite_object = get_sprite_object(context.active_object)
             
             self.set_scaling(active_object,event)
-            if self.sprite_object != None:
+            if self.sprite_object != None and context.scene.coa_nla_mode == "ACTION":
                 self.set_frame_bounds_and_actions(context)
             
-            screen = context.screen    
+            screen = context.screen
             if screen.coa_view == "2D":
                 set_middle_mouse_move(True)
                 self.set_view_front(context)
@@ -110,18 +110,21 @@ class COAModal(bpy.types.Operator):
                 set_middle_mouse_move(False)
                 
         elif self.check_event_value(event) == "JUST_RELEASED":
-            screen = context.screen
-            if "-nonnormal" in context.screen.name:
-                context.screen.coa_view = bpy.data.screens[context.screen.name.split("-nonnormal")[0]].coa_view
-            if screen.coa_view == "2D":
-                set_middle_mouse_move(True)
-                self.set_view_front(context)
-            elif screen.coa_view == "3D":
-                set_middle_mouse_move(False)
             
+            
+            screen = context.screen
+            if "coa_init_fullscreen" not in screen:
+                if "-nonnormal" in context.screen.name:
+                    context.screen.coa_view = bpy.data.screens[context.screen.name.split("-nonnormal")[0]].coa_view
+                if screen.coa_view == "2D":
+                    set_middle_mouse_move(True)
+                    self.set_view_front(context)
+                elif screen.coa_view == "3D":
+                    set_middle_mouse_move(False)
+                screen["coa_init_fullscreen"] = True    
                 
                 
-            if active_object != None and "sprite" in active_object and active_object.mode == "OBJECT":
+            if active_object != None and "coa_sprite" in active_object and active_object.mode == "OBJECT":
                 obj = active_object
                 if obj.coa_alpha != obj.coa_alpha_last:
                     set_alpha(obj,bpy.context,obj.coa_alpha)
@@ -137,8 +140,10 @@ class COAModal(bpy.types.Operator):
         
         ### Store sprite dimension in coa_sprite_dimension when mesh is rescaled
             for obj in context.selected_objects:
-                if obj != None and "sprite" in obj and len(obj.data.vertices) == 4:
+                if obj != None and "coa_sprite" in obj and len(obj.data.vertices) == 4:
                     obj.coa_sprite_dimension = Vector((get_local_dimension(obj)[0],0,get_local_dimension(obj)[1]))
+                    
+            
         if self.check_scaling(active_object,event) == "SCALE_APPLIED":
             bpy.ops.object.mode_set(mode="OBJECT")
             bpy.ops.object.mode_set(mode="EDIT")

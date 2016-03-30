@@ -55,11 +55,11 @@ class SelectFrameThumb(bpy.types.Operator):
         row = layout.row()
         row.scale_y = .8
         thumb_scale =  clamp(256/(obj.coa_tiles_x * obj.coa_tiles_y),1,5)
-        row.template_icon_view(obj, "coa_sprite_frame_previews",scale=thumb_scale)
+        row.template_icon_view(obj, "coa_sprite_frame_previews",scale=5)
     
     def invoke(self, context, event):
         obj = context.active_object
-        if "sprite" in obj and obj.type == "MESH" and obj.coa_tiles_x * obj.coa_tiles_y > 1:
+        if "coa_sprite" in obj and obj.type == "MESH" and obj.coa_tiles_x * obj.coa_tiles_y > 1:
             if obj.coa_tiles_changed:
                 obj.coa_sprite_updated = False
             bpy.ops.my_operator.create_spritesheet_preview()
@@ -91,7 +91,7 @@ class CreateSpritesheetPreview(bpy.types.Operator):
         thumb_dir_path = os.path.join(context.user_preferences.filepaths.temporary_directory,"coa_thumbs")
         if obj.coa_tiles_changed or not os.path.exists(thumb_dir_path):
             obj.coa_tiles_changed = False
-            if "sprite" in obj:
+            if "coa_sprite" in obj:
                 if not os.path.exists(thumb_dir_path):
                     os.makedirs(thumb_dir_path)
                 
@@ -128,7 +128,10 @@ class CreateSpritesheetPreview(bpy.types.Operator):
                 uv_layer.data[2].uv = [1.0,1.0]
                 uv_layer.data[3].uv = [0.0,1.0]
                 
-                preview_dimension = [thumb_size,int(sprite_dimension[1]*(thumb_size/sprite_dimension[0]))]
+                if sprite_dimension[0] > sprite_dimension[1]:
+                    preview_dimension = [thumb_size,int(sprite_dimension[1]*(thumb_size/sprite_dimension[0]))]
+                else:
+                    preview_dimension = [int(sprite_dimension[0]*(thumb_size/sprite_dimension[1])),thumb_size]
                 obj.data.uv_textures.active = obj.data.uv_textures[0]
                 
                 ### itereate over all frames of a spritesheet and generate thumbnail icons

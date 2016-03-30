@@ -141,3 +141,119 @@ class RemoveAnimationCollection(bpy.types.Operator):
             
         return {"FINISHED"}
                 
+class CreateNlaTrack(bpy.types.Operator):
+    bl_idname = "coa_operator.create_nla_track"
+    bl_label = "Create NLA Track"
+    bl_description = "Generate NLA Strips."
+    bl_options = {"REGISTER","UNDO"}
+    
+    
+    start = IntProperty(default=0)
+    repeat = IntProperty(default=1)
+    scale = FloatProperty(default=1.0)
+    insert_at_cursor = BoolProperty(default=True)
+    anim_collection_name = StringProperty()
+    auto_blend = BoolProperty(default=True)
+
+    def check(self,context):
+        return True
+    
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def draw(self,context):
+        layout = self.layout
+        row = layout.row()
+        row.prop(self,"insert_at_cursor",text="Insert Strip at Cursor Location")
+        row = layout.row()
+        row.prop(self,"auto_blend",text="Auto Blending")
+        row = layout.row()
+        if self.insert_at_cursor:
+            row.active = False
+            row.enabled = False
+        row.prop(self,"start",text="Insert at Frame")
+        row = layout.row()
+        row.prop(self,"repeat",text="Repeat Strip")
+        row = layout.row()
+        row.prop(self,"scale",text="Scale Strip")
+        
+
+    def invoke(self,context,event):
+        wm = context.window_manager
+        self.start = 0
+        self.repeat = 1
+        self.scale = 1.0
+        #self.insert_at_cursor = True
+        return wm.invoke_props_dialog(self)
+    
+    def get_empty_track(self,anim_data,strip_range):
+        if len(anim_data.nla_tracks) == 0:
+            return anim_data.nla_tracks.new()
+        
+        strip_space = range(strip_range[0],strip_range[1]+1)
+        for i,track in enumerate(anim_data.nla_tracks):
+            track = anim_data.nla_tracks[i]
+            
+            if len(track.strips) == 0:
+                return track
+            
+            intersecting_strip_found = False
+            for strip in track.strips:
+                if strip.frame_start in strip_space or strip.frame_end in strip_space:
+                    intersecting_strip_found = True
+            if not intersecting_strip_found:
+                return track
+                 
+        return anim_data.nla_tracks.new()
+    
+    def execute(self, context):
+        obj = bpy.context.active_object
+        sprite_object = get_sprite_object(obj)
+        children = get_children(context,sprite_object,ob_list=[])
+        
+        context.scene.coa_nla_mode = "NLA"
+        
+        if self.anim_collection_name == "":
+            anim_collection = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
+        else:    
+            anim_collection = sprite_object.coa_anim_collections[self.anim_collection_name]
+        
+        if self.insert_at_cursor:
+            self.start = context.scene.frame_current
+        
+        for child in children:
+            if child.animation_data != None:
+                for track in child.animation_data.nla_tracks:
+                    for strip in track.strips:
+                        strip.select = False
+                    
+                action_name = anim_collection.name + "_" + child.name
+                if action_name in bpy.data.actions:
+                    action_start = 0
+                    action_end = anim_collection.frame_end
+                    strip_start = self.start
+                    strip_end = self.start + anim_collection.frame_end
+                    
+                    
+                    action = bpy.data.actions[action_name]
+                    
+                    if child.animation_data != None:
+                        child.animation_data_create()
+                        anim_data = child.animation_data
+                        
+                        nla_track = self.get_empty_track(anim_data,[strip_start,strip_end])
+                            
+                        strip = nla_track.strips.new(action_name,self.start,action)
+                        strip.action_frame_start = action_start
+                        strip.action_frame_end = action_end
+                        
+                        strip.frame_start = strip_start
+                        strip.frame_end = strip_end
+                        strip.repeat = self.repeat
+                        strip.use_auto_blend = self.auto_blend
+                        strip.scale = self.scale
+                    
+                    
+        return {"FINISHED"}
+                        

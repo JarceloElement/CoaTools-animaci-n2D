@@ -49,6 +49,7 @@ class ImportSprite(bpy.types.Operator):
     
     def create_mesh(self,context,name="Sprite",width=100,height=100,pos=Vector((0,0,0))):
         me = bpy.data.meshes.new(name)
+        me.show_double_sided = True
         obj = bpy.data.objects.new(name,me)
         context.scene.objects.link(obj)
         context.scene.objects.active = obj
@@ -67,7 +68,7 @@ class ImportSprite(bpy.types.Operator):
         bpy.ops.object.mode_set(mode="OBJECT")
         obj.data.uv_textures.new("UVMap")
         obj.location = Vector((pos[0],pos[1],-pos[2]))*self.scale + Vector((self.offset[0],self.offset[1],self.offset[2]))*self.scale
-        obj["sprite"] = True
+        obj["coa_sprite"] = True
         if self.parent != "None":
             obj.parent = bpy.data.objects[self.parent]
         return obj
