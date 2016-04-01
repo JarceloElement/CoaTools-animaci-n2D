@@ -114,6 +114,7 @@ def register():
     bpy.app.handlers.frame_change_post.append(update_sprites)    
     bpy.app.handlers.scene_update_pre.append(update_thumbs)
     bpy.app.handlers.load_post.append(coa_startup)
+
     register_keymaps()
     
 def unregister():
@@ -130,8 +131,10 @@ def unregister():
     bpy.app.handlers.frame_change_post.remove(update_sprites)
     bpy.app.handlers.scene_update_pre.remove(update_thumbs)
     bpy.app.handlers.load_post.remove(coa_startup)
+    
     unregister_keymaps()
     
+
          
 @persistent
 def update_sprites(dummy):
@@ -146,16 +149,12 @@ def update_sprites(dummy):
     else:
         objects = bpy.data.objects
     
-    sprite_object = get_sprite_object(context.active_object)
-    if sprite_object != None and sprite_object.coa_animation_loop:
-        if context.scene.frame_current > sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index].frame_end:
-            context.scene.frame_current = 0
         
     for obj in objects:
-        if "coa_sprite" in obj and obj.animation_data != None and obj.animation_data.action != None and obj.type == "MESH":
+        if "coa_sprite" in obj and obj.animation_data != None and obj.type == "MESH":
             if obj.coa_sprite_frame != obj.coa_sprite_frame_last:
                 update_uv(bpy.context,obj)
-                obj.coa_sprite_frame_last = int(obj.coa_sprite_frame)
+                obj.coa_sprite_frame_last = obj.coa_sprite_frame
             if obj.coa_alpha != obj.coa_alpha_last:
                 set_alpha(obj,bpy.context,obj.coa_alpha)
                 obj.coa_alpha_last = obj.coa_alpha
@@ -170,6 +169,12 @@ def update_sprites(dummy):
         if bpy.context.scene.coa_ticker%3 == 0 and update_scene:
             bpy.context.scene.update()
 
+    ### animation wrap mode
+    if hasattr(context,"active_object"):
+        sprite_object = get_sprite_object(context.active_object)
+        if sprite_object != None and sprite_object.coa_animation_loop:
+            if context.scene.frame_current > context.scene.frame_end:
+                context.scene.frame_current = 0
 
 
 @persistent

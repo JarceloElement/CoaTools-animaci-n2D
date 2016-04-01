@@ -321,6 +321,7 @@ class DrawContour(bpy.types.Operator):
         self.armature = None
         self.bone_shape = None
         self.draw_bounds = False
+        self.draw_type = ""
     
     def project_cursor(self, event):
         coord = mathutils.Vector((event.mouse_region_x, event.mouse_region_y))
@@ -446,6 +447,34 @@ class DrawContour(bpy.types.Operator):
         
         bmesh.update_edit_mesh(obj.data)
     
+    def set_bone_shape_color_and_wireframe(self,context,obj):
+        if self.bone.bone_group != None:
+            bone_group_name = self.bone.bone_group.name
+            bone_group_color = self.bone.bone_group.colors.normal
+            suffix = "_group_color"
+            if (bone_group_name+suffix) not in bpy.data.materials:
+                material = bpy.data.materials.new(bone_group_name+suffix)
+            else:
+                material = bpy.data.materials[bone_group_name+suffix]
+            
+            material.diffuse_color = bone_group_color
+            material.use_shadeless = True
+            
+            if len(obj.material_slots) == 0:
+                obj.data.materials.append(material)
+            else:
+                obj.material_slots[0].material = material
+        else:
+            if len(obj.material_slots) > 0:
+                obj.material_slots[0].material = None
+                      
+        bm = bmesh.from_edit_mesh(obj.data)
+        if len(bm.faces) > 0:
+            self.armature.data.bones[self.bone.name].show_wire = False
+        else:
+            self.armature.data.bones[self.bone.name].show_wire = True
+        bm.free()    
+    
     def modal(self, context, event):
         self.in_view_3d = check_region(context,event)
         
@@ -508,27 +537,30 @@ class DrawContour(bpy.types.Operator):
             scene.tool_settings.double_threshold = scene.coa_snap_distance
             
             if (event.type in {'ESC'} and self.inside_area) or self.sprite_object.coa_edit_mesh == False:
+                if self.mode == "DRAW_BONE_SHAPE":
+                    self.set_bone_shape_color_and_wireframe(context,self.bone_shape)
+                    
                 bpy.context.space_data.show_manipulator = self.show_manipulator
                 bpy.context.window.cursor_set("CROSSHAIR")
                 bpy.ops.object.mode_set(mode="OBJECT")
                 self.sprite_object.coa_edit_mesh = False
                 set_local_view(False)
                 
+                    
                 if self.mode == "DRAW_BONE_SHAPE":
+                    self.armature.draw_type = self.draw_type
                     context.scene.coa_lock_to_bounds = self.draw_bounds
                     if self.armature != None:
                         context.scene.objects.active = self.armature
                     if len(self.bone_shape.data.vertices) > 1:
                         self.bone.custom_shape = self.bone_shape
                         self.bone.use_custom_shape_bone_size = False
-                        self.armature.data.bones[self.bone.name].show_wire = True
                     else:
                         self.bone.custom_shape = None    
                     
                     self.bone_shape.select = False
                     self.bone_shape.parent = None
                     context.scene.objects.unlink(self.bone_shape)
-                    
                 return{'CANCELLED'}
             
             if event.type in {'TAB'} and not event.ctrl:
@@ -557,17 +589,27 @@ class DrawContour(bpy.types.Operator):
             bone_mat = armature.matrix_world * bone.matrix
             bone_loc, bone_rot, bone_scale = bone_mat.decompose()
             
-            shape_name = bone.name+"_custom_shape"
+            if bone.custom_shape != None and bone.custom_shape.name in bpy.data.objects:
+                shape_name = bone.custom_shape.name
+            else:    
+                shape_name = bone.name+"_custom_shape"
+                
             if shape_name in bpy.data.meshes:
                 me = bpy.data.meshes[shape_name]
             else:    
                 me = bpy.data.meshes.new(shape_name)
             me.show_double_sided = True
-            bone_shape = bpy.data.objects.new(shape_name,me)
+            if shape_name in bpy.data.objects:
+                bone_shape = bpy.data.objects[shape_name]
+            else:    
+                bone_shape = bpy.data.objects.new(shape_name,me)
             context.scene.objects.link(bone_shape)
             context.scene.objects.active = bone_shape
             bone_shape.select = True
             bone_shape.parent = self.sprite_object
+            
+            bone_shape.name = bone.name+"_custom_shape"
+            me.name = bone.name+"_custom_shape"
             
             bone_shape.name = bone.name+"_custom_shape"
             bone_shape.matrix_local = bone_mat
@@ -575,13 +617,18 @@ class DrawContour(bpy.types.Operator):
             self.bone_shape = bone_shape
             self.bone = bone
             self.armature = armature
-            bone.custom_shape = self.bone_shape
+            bone.custom_shape = None#self.bone_shape
+            self.draw_type = self.armature.draw_type
+            self.armature.draw_type = "WIRE"
 
 
         
         self.show_manipulator = bpy.context.space_data.show_manipulator
         bpy.context.space_data.show_manipulator = False
         bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
+
+
         self.sprite_object.coa_edit_mesh = True
         
         if self.mode == "EDIT_MESH":

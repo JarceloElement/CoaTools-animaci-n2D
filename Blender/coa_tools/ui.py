@@ -105,81 +105,6 @@ class CutoutAnimationInfo(bpy.types.Panel):
         op.hashtags = "b3d,coatools"
         op.via = "ndee85"
 
-class AddKeyframe(bpy.types.Operator):
-    bl_idname = "my_operator.add_keyframe"
-    bl_label = "Add Keyframe"
-    bl_description = "Add Keyframe"
-    bl_options = {"REGISTER"}
-    
-    prop_name = StringProperty()
-    add_keyframe = BoolProperty(default=True)
-    interpolation = EnumProperty(default="BEZIER",items=(("BEZIER","BEZIER","BEZIER","IPO_BEZIER",0),("LINEAR","LINEAR","LINEAR","IPO_LINEAR",1),("CONSTANT","CONSTANT","CONSTANT","IPO_CONSTANT",2)))
-    default_interpolation = StringProperty()
-    
-    @classmethod
-    def poll(cls, context):
-        return True
-
-    def draw(self,context):
-        layout = self.layout
-        row = layout.row()
-        row.prop(self,"interpolation",expand=True)
-    
-    def create_keyframe(self,context,event):
-        sprite = context.active_object
-        sprite_object = get_sprite_object(sprite)
-        
-        if sprite_object.coa_anim_collections_index > 1:
-            if self.add_keyframe:
-                for sprite in context.selected_objects:
-                    if sprite.animation_data != None and sprite.animation_data.action != None:
-                        sprite.keyframe_insert(self.prop_name)
-                        
-                        for fcurve in sprite.animation_data.action.fcurves:
-                            if self.prop_name in fcurve.data_path:
-                                for key in fcurve.keyframe_points:
-                                    if key.co[0] == context.scene.frame_current:
-                                        if event == None:
-                                            key.interpolation = self.interpolation
-                                        else:
-                                            key.interpolation = self.default_interpolation    
-                    else:
-                        create_action(context)
-                        sprite.keyframe_insert(self.prop_name)
-                self.report({'INFO'},str("Keyframe added at frame "+str(context.scene.frame_current)+"."))    
-            else:
-                for sprite in context.selected_objects:
-                    if sprite.animation_data != None and sprite.animation_data.action != None:
-                        sprite.keyframe_delete(self.prop_name)
-                        
-                        collection = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
-                        action_name = collection.name + "_" +sprite.name
-                        if action_name in bpy.data.actions:
-                            action = bpy.data.actions[action_name]
-                            if len(action.fcurves) == 0:
-                                action.use_fake_user = False
-                                action.user_clear()   
-                        self.report({'INFO'},str("Keyframe deleted at frame "+str(context.scene.frame_current)+"."))
-                        set_action(context)
-                    else:
-                        self.report({'WARNING'},str("Sprite has no Animation assigned."))
-        else:
-            self.report({'WARNING'},str("No Animation selected"))
-    
-    #def execute(self, context):
-    def invoke(self,context,event):
-        wm = context.window_manager
-        if event.ctrl:
-            return wm.invoke_props_dialog(self)
-        else:
-            self.create_keyframe(context,event)
-            return {"FINISHED"}
-        
-    def execute(self,context):
-        event = None
-        self.create_keyframe(context,event) 
-        return {"FINISHED"}   
-        
 
 def enum_sprite_previews(self, context):
     """EnumProperty callback"""
@@ -242,6 +167,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
         self.hide_select = self.coa_hide_select
     
     def update_uv(self,context):
+        self.coa_sprite_frame_last = -1
         if self.coa_sprite_frame >= (self.coa_tiles_x * self.coa_tiles_y):
             self.coa_sprite_frame = (self.coa_tiles_x * self.coa_tiles_y) - 1
         update_uv(context,context.active_object)
@@ -711,9 +637,10 @@ class CutoutAnimationCollections(bpy.types.Panel):
         scene = context.scene
         sprite_object = get_sprite_object(context.active_object)
         
-        scene.frame_start = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index].frame_start
-        scene.frame_end = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index].frame_end
-        set_action(context)
+        if context.scene.coa_nla_mode == "ACTION":
+            scene.frame_start = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index].frame_start
+            scene.frame_end = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index].frame_end
+            set_action(context)
         for obj in context.visible_objects:
             update_uv(context,obj)
             set_alpha(obj,bpy.context,obj.coa_alpha)
@@ -755,14 +682,17 @@ class CutoutAnimationCollections(bpy.types.Panel):
     
     def update_frame_range(self,context):
         sprite_object = get_sprite_object(context.active_object)
-        anim_collection = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
-        context.scene.frame_start = self.coa_frame_start
-        context.scene.frame_end = self.coa_frame_end
+        if len(sprite_object.coa_anim_collections) > 0:
+            anim_collection = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
+        
+        if context.scene.coa_nla_mode == "NLA" or len(sprite_object.coa_anim_collections) == 0:
+            context.scene.frame_start = self.coa_frame_start
+            context.scene.frame_end = self.coa_frame_end
     
     bpy.types.Object.coa_anim_collections_index = IntProperty(update=set_actions)
     bpy.types.Scene.coa_nla_mode = EnumProperty(description="Animation Mode. Can be set to NLA or Action to playback all NLA Strips or only Single Actions",items=(("ACTION","ACTION","ACTION","ACTION",0),("NLA","NLA","NLA","NLA",1)),update=set_nla_mode)
-    bpy.types.Scene.coa_frame_start = IntProperty(name="Frame Start",default=0,update=update_frame_range)
-    bpy.types.Scene.coa_frame_end = IntProperty(name="Frame End",default=250,update=update_frame_range)
+    bpy.types.Scene.coa_frame_start = IntProperty(name="Frame Start",default=0,min=0,update=update_frame_range)
+    bpy.types.Scene.coa_frame_end = IntProperty(name="Frame End",default=250,min=1,update=update_frame_range)
     
     def draw(self, context):
         layout = self.layout

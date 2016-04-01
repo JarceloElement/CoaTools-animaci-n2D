@@ -90,7 +90,38 @@ class COAModal(bpy.types.Operator):
                     if space.type == "VIEW_3D":
                         region = space.region_3d
                         region.view_rotation = Quaternion((0.7071,0.7071,-0.0,-0.0))
-                                
+    
+    def update_bone_group_color(self,context):
+        active_object = context.active_object
+        suffix = "_group_color"
+        if active_object != None and active_object.type == "ARMATURE":
+            for bone in active_object.pose.bones:
+                custom_shape = bone.custom_shape
+                if custom_shape != None and bone.bone_group != None:
+                    mat_name = bone.bone_group.name+"_group_color"
+                    if mat_name in bpy.data.materials:
+                        material = bpy.data.materials[mat_name]
+                    else:
+                        material = bpy.data.materials.new(mat_name)
+                            
+                    if len(custom_shape.material_slots) == 0:
+                        custom_shape.data.materials.append(material)
+                    else:
+                        custom_shape.material_slots[0].material = material    
+                    
+                    material.diffuse_color = bone.bone_group.colors.normal
+                elif custom_shape != None:
+                    if len(custom_shape.material_slots) > 0:
+                        custom_shape.material_slots[0].material = None
+            
+            for bone_group in active_object.pose.bone_groups:
+                if (bone_group.name+suffix) in bpy.data.materials:
+                    material = bpy.data.materials[bone_group.name+suffix]
+                    if material.diffuse_color != bone_group.colors.normal:
+                        material.diffuse_color = bone_group.colors.normal
+                        
+        
+                                    
     def modal(self,context,event):
         ### execute only if an event pressed is triggered
         active_object = context.active_object
@@ -110,7 +141,7 @@ class COAModal(bpy.types.Operator):
                 set_middle_mouse_move(False)
                 
         elif self.check_event_value(event) == "JUST_RELEASED":
-            
+            self.update_bone_group_color(context)
             
             screen = context.screen
             if "coa_init_fullscreen" not in screen:
@@ -126,6 +157,9 @@ class COAModal(bpy.types.Operator):
                 
             if active_object != None and "coa_sprite" in active_object and active_object.mode == "OBJECT":
                 obj = active_object
+#                if obj.coa_sprite_frame != obj.coa_sprite_frame_last:
+#                    update_uv(bpy.context,obj)
+#                    obj.coa_sprite_frame_last = int(obj.coa_sprite_frame)
                 if obj.coa_alpha != obj.coa_alpha_last:
                     set_alpha(obj,bpy.context,obj.coa_alpha)
                     obj.coa_alpha_last = obj.coa_alpha

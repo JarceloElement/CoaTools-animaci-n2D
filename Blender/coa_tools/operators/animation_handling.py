@@ -33,6 +33,120 @@ import json
 from bpy.app.handlers import persistent
 from .. functions import *
 
+class AddKeyframe(bpy.types.Operator):
+    bl_idname = "my_operator.add_keyframe"
+    bl_label = "Add Keyframe"
+    bl_description = "Add Keyframe"
+    bl_options = {"REGISTER"}
+    
+    prop_name = StringProperty()
+    add_keyframe = BoolProperty(default=True)
+    interpolation = EnumProperty(default="BEZIER",items=(("BEZIER","BEZIER","BEZIER","IPO_BEZIER",0),("LINEAR","LINEAR","LINEAR","IPO_LINEAR",1),("CONSTANT","CONSTANT","CONSTANT","IPO_CONSTANT",2)))
+    default_interpolation = StringProperty()
+    
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def draw(self,context):
+        layout = self.layout
+        row = layout.row()
+        row.prop(self,"interpolation",expand=True)
+    
+    def create_keyframe(self,context,event,data_path,group=""):
+        sprite = context.active_object
+        sprite_object = get_sprite_object(sprite)
+        
+        if sprite_object.coa_anim_collections_index > 1:
+            if self.add_keyframe:
+                for sprite in context.selected_objects:
+                    if sprite.animation_data != None and sprite.animation_data.action != None:
+                        sprite.keyframe_insert(data_path,group=group)
+                        
+                        for fcurve in sprite.animation_data.action.fcurves:
+                            if data_path in fcurve.data_path:
+                                for key in fcurve.keyframe_points:
+                                    if key.co[0] == context.scene.frame_current:
+                                        if event == None:
+                                            key.interpolation = self.interpolation
+                                        else:
+                                            key.interpolation = self.default_interpolation    
+                    else:
+                        create_action(context)
+                        sprite.keyframe_insert(data_path,group=group)
+                self.report({'INFO'},str("Keyframe added at frame "+str(context.scene.frame_current)+"."))    
+            else:
+                for sprite in context.selected_objects:
+                    if sprite.animation_data != None and sprite.animation_data.action != None:
+                        sprite.keyframe_delete(data_path)
+                        
+                        collection = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index]
+                        action_name = collection.name + "_" +sprite.name
+                        if action_name in bpy.data.actions:
+                            action = bpy.data.actions[action_name]
+                            if len(action.fcurves) == 0:
+                                action.use_fake_user = False
+                                action.user_clear()   
+                        self.report({'INFO'},str("Keyframe deleted at frame "+str(context.scene.frame_current)+"."))
+                        set_action(context)
+                    else:
+                        self.report({'WARNING'},str("Sprite has no Animation assigned."))
+        else:
+            self.report({'WARNING'},str("No Animation selected"))
+    
+    
+    def create_bone_keyframe(self,context,event,prop_name):
+        obj = context.active_object
+        if obj != None and obj.type == "ARMATURE" and obj.mode == "POSE":
+            for pose_bone in context.selected_pose_bones:
+                data_path = 'pose.bones["'+str(pose_bone.name)+'"].'+prop_name
+                
+                if pose_bone.rotation_mode == "QUATERNION" and prop_name == "rotation":
+                    data_path = data_path.replace(".rotation",".rotation_quaternion")
+                else:
+                    data_path = data_path.replace(".rotation",".rotation_euler")
+                    
+                self.create_keyframe(context,event,data_path,group=pose_bone.name)     
+    
+    def invoke(self,context,event):
+        wm = context.window_manager
+        if event.ctrl:
+            return wm.invoke_props_dialog(self)
+        else:
+            if self.prop_name in ["location","rotation","scale","LocRotScale"]:
+                if self.prop_name == "LocRotScale":
+                    data_path = "location"
+                    self.create_bone_keyframe(context,event,data_path)
+                    
+                    data_path = "rotation"
+                    self.create_bone_keyframe(context,event,data_path)
+                    
+                    data_path = "scale"
+                    self.create_bone_keyframe(context,event,data_path)
+                else:
+                    self.create_bone_keyframe(context,event,self.prop_name)
+            else:
+                self.create_keyframe(context,event,self.prop_name)
+            return {"FINISHED"}
+        
+    def execute(self,context):
+        event = None
+        if self.prop_name in ["location","rotation","scale","LocRotScale"]:
+            if self.prop_name == "LocRotScale":
+                data_path = "location"
+                self.create_bone_keyframe(context,event,data_path)
+                
+                data_path = "rotation"
+                self.create_bone_keyframe(context,event,data_path)
+                
+                data_path = "scale"
+                self.create_bone_keyframe(context,event,data_path)
+            else:
+                self.create_bone_keyframe(context,event,self.prop_name)
+        else:
+            self.create_keyframe(context,event,self.prop_name) 
+        return {"FINISHED"}   
+
 class AddAnimationCollection(bpy.types.Operator):
     bl_idname = "my_operator.add_animation_collection"
     bl_label = "Add Animation Collection"

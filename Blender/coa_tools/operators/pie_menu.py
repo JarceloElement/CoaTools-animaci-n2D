@@ -24,19 +24,19 @@ class VIEW3D_PIE_coa_menu(Menu):
             #pie.operator_enum("view3d.coa_pie_menu_options", "selected_mode")
             if obj.type == "MESH":
                 pie.operator("my_operator.select_frame_thumb",text="Select Frame",icon="IMAGE_COL")
-                pie.operator("wm.call_menu_pie", icon="SPACE3", text="Delete Keyframe(s)").name = "view3d.coa_pie_keyframe_menu_remove"
+                pie.operator("wm.call_menu_pie", icon="SPACE2", text="Add Keyframe(s)").name = "view3d.coa_pie_keyframe_menu_add"
                 pie.operator("object.coa_edit_weights",text="Edit Weights",icon="MOD_VERTEX_WEIGHT")
                 pie.operator("object.coa_edit_mesh",text="Edit Mesh",icon="GREASEPENCIL")
                 pie.operator("scene.coa_quick_armature",text="Edit Armature",icon="ARMATURE_DATA")
-                pie.operator("wm.call_menu_pie", icon="SPACE2", text="Add Keyframe(s)").name = "view3d.coa_pie_keyframe_menu_add"
+                pie.operator("wm.call_menu_pie", icon="SPACE3", text="Delete Keyframe(s)").name = "view3d.coa_pie_keyframe_menu_remove"
                 
             elif obj.type == "ARMATURE":
                 pie.operator("object.coa_set_ik",text="Create IK Bone",icon="CONSTRAINT_BONE")
-                pie.operator("wm.call_menu_pie", icon="SPACE3", text="Delete Keyframe(s)").name = "view3d.coa_pie_keyframe_menu_remove"
+                pie.operator("wm.call_menu_pie", icon="SPACE2", text="Add Keyframe(s)").name = "view3d.coa_pie_keyframe_menu_add"
                 pie.operator("bone.coa_draw_bone_shape",text="Draw Bone Shape",icon="BONE_DATA")
                 pie.operator("scene.coa_quick_armature",text="Edit Armature",icon="ARMATURE_DATA")
                 pie.operator("bone.coa_set_stretch_bone",text="Create Stretch Bone",icon="CONSTRAINT_BONE")
-                pie.operator("wm.call_menu_pie", icon="SPACE2", text="Add Keyframe(s)").name = "view3d.coa_pie_keyframe_menu_add"
+                pie.operator("wm.call_menu_pie", icon="SPACE3", text="Delete Keyframe(s)").name = "view3d.coa_pie_keyframe_menu_remove"
 
 class VIEW3D_PIE_coa_keyframe_menu_01(Menu):
     # label is displayed at the center of the pie menu.
@@ -102,24 +102,26 @@ def add_remove_keyframe(pie,add):
         op.prop_name = "coa_z_value"
         op.add_keyframe = add
         op.default_interpolation = "CONSTANT"
+        
     elif obj.type == "ARMATURE":
         bone = context.active_pose_bone
         op = pie.operator("my_operator.add_keyframe",text="Location",icon="MAN_TRANS")
-        op.prop_name = 'pose.bones["'+str(bone.name)+'"].location'
+        op.prop_name = "location"
         op.add_keyframe = add
         op.default_interpolation = "BEZIER"
         
         
         op = pie.operator("my_operator.add_keyframe",text="Scale",icon="MAN_SCALE")
-        op.prop_name = 'pose.bones["'+str(bone.name)+'"].scale'
+        op.prop_name = "scale"
         op.add_keyframe = add
         op.default_interpolation = "BEZIER"
         
         op = pie.operator("my_operator.add_keyframe",text="Rotation",icon="MAN_ROT")
-        if bone.rotation_mode == "QUATERNION":
-            op.prop_name = 'pose.bones["'+str(bone.name)+'"].rotation_quaternion'
-        else:
-            op.prop_name = 'pose.bones["'+str(bone.name)+'"].rotation_euler'
-            
+        op.prop_name = "rotation"
         op.add_keyframe = add
         op.default_interpolation = "BEZIER" 
+        
+        op = pie.operator("my_operator.add_keyframe",text="Location Rotation Scale",icon="MOD_ARMATURE")
+        op.prop_name = "LocRotScale"
+        op.add_keyframe = add
+        op.default_interpolation = "BEZIER"
