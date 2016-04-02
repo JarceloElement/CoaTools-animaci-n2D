@@ -61,7 +61,10 @@ class AddKeyframe(bpy.types.Operator):
             if self.add_keyframe:
                 for sprite in context.selected_objects:
                     if sprite.animation_data != None and sprite.animation_data.action != None:
-                        sprite.keyframe_insert(data_path,group=group)
+                        if group != "":
+                            sprite.keyframe_insert(data_path,group=group)
+                        else:
+                            sprite.keyframe_insert(data_path)    
                         
                         for fcurve in sprite.animation_data.action.fcurves:
                             if data_path in fcurve.data_path:
@@ -73,7 +76,10 @@ class AddKeyframe(bpy.types.Operator):
                                             key.interpolation = self.default_interpolation    
                     else:
                         create_action(context)
-                        sprite.keyframe_insert(data_path,group=group)
+                        if group != "":
+                            sprite.keyframe_insert(data_path,group=group)
+                        else:
+                            sprite.keyframe_insert(data_path)   
                 self.report({'INFO'},str("Keyframe added at frame "+str(context.scene.frame_current)+"."))    
             else:
                 for sprite in context.selected_objects:
