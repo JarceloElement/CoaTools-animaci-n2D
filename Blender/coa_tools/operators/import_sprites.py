@@ -99,12 +99,17 @@ class ImportSprite(bpy.types.Operator):
         if os.path.exists(self.path):
             data = bpy.data
             sprite_name = os.path.basename(self.path)
-            if sprite_name not in data.images:
+            
+            sprite_found = False
+            for image in bpy.data.images:
+                if image.filepath == self.path:
+                    sprite_found = True
+                    img = image
+                    img.reload()
+                    break
+            if not sprite_found:
                 img = data.images.load(self.path)
-            else:
-                img = data.images[sprite_name]
-                img.filepath = self.path
-                img.reload()
+                
             obj = self.create_mesh(context,name=img.name,width=img.size[0],height=img.size[1],pos=self.pos)
             mat = self.create_material(context,obj,name=img.name)
             tex = self.create_texture(context,mat,img,name=img.name)
