@@ -102,7 +102,7 @@ class ImportSprite(bpy.types.Operator):
             
             sprite_found = False
             for image in bpy.data.images:
-                if image.filepath == self.path:
+                if os.path.samefile(bpy.path.abspath(image.filepath),self.path):
                     sprite_found = True
                     img = image
                     img.reload()
