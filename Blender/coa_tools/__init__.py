@@ -55,7 +55,7 @@ import traceback
 class ExampleAddonPreferences(bpy.types.AddonPreferences):
     bl_idname = __name__
 
-    show_donate_icon = bpy.props.BoolProperty(name="Show Donate Icon",default=False)
+    show_donate_icon = bpy.props.BoolProperty(name="Show Donate Icon",default=True)
     sprite_import_export_scale = bpy.props.FloatProperty(name="Sprite import/export scale",default=0.01)
     sprite_thumb_size = bpy.props.IntProperty(name="Sprite thumbnail size",default=48)
     def draw(self, context):
