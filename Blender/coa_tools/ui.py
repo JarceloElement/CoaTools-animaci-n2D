@@ -642,10 +642,11 @@ class CutoutAnimationCollections(bpy.types.Panel):
             scene.frame_end = sprite_object.coa_anim_collections[sprite_object.coa_anim_collections_index].frame_end
             set_action(context)
         for obj in context.visible_objects:
-            update_uv(context,obj)
-            set_alpha(obj,bpy.context,obj.coa_alpha)
-            set_z_value(context,obj,obj.coa_z_value)
-            set_modulate_color(obj,context,obj.coa_modulate_color)
+            if obj.type == "MESH" and "coa_sprite" in obj:
+                update_uv(context,obj)
+                set_alpha(obj,bpy.context,obj.coa_alpha)
+                set_z_value(context,obj,obj.coa_z_value)
+                set_modulate_color(obj,context,obj.coa_modulate_color)
         
     
     def set_nla_mode(self,context):
@@ -668,10 +669,11 @@ class CutoutAnimationCollections(bpy.types.Panel):
             context.scene.frame_end = anim_collection.frame_end
             set_action(context)            
             for obj in context.visible_objects:
-                update_uv(context,obj)
-                set_alpha(obj,bpy.context,obj.coa_alpha)
-                set_z_value(context,obj,obj.coa_z_value)
-                set_modulate_color(obj,context,obj.coa_modulate_color)
+                if obj.type == "MESH" and "coa_sprite" in obj:
+                    update_uv(context,obj)
+                    set_alpha(obj,bpy.context,obj.coa_alpha)
+                    set_z_value(context,obj,obj.coa_z_value)
+                    set_modulate_color(obj,context,obj.coa_modulate_color)
             for child in children:
                 if child.animation_data != None:
                     for track in child.animation_data.nla_tracks:
