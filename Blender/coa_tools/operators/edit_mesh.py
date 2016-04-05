@@ -155,6 +155,10 @@ class Fill(bpy.types.Operator):
     detail = FloatProperty(name="Detail",default=.3,min=0,max=1.0)
     triangulate = BoolProperty(default=False)
     
+    def __init__(self):
+        self.tiles_x = 1
+        self.tiles_y = 1
+        self.sprite_frame = 0
 
     
     def get_img(self,context,obj):
@@ -165,6 +169,7 @@ class Fill(bpy.types.Operator):
         
     def triangulate_fill(self,context):
         start_obj = context.active_object
+        
         bm = bmesh.from_edit_mesh(start_obj.data)
         selected = False
         for vert in bm.verts:
@@ -219,6 +224,7 @@ class Fill(bpy.types.Operator):
         bpy.ops.mesh.remove_doubles(use_unselected=True)
         
         
+        
         ### create uv map
         bm = bmesh.from_edit_mesh(start_obj.data)
         filled_contour = []
@@ -234,19 +240,70 @@ class Fill(bpy.types.Operator):
             face.select = True
         bmesh.update_edit_mesh(start_obj.data)
         
-        bpy.ops.uv.project_from_view(camera_bounds=False, correct_aspect=True, scale_to_bounds=True)
         for vert in bm.verts:
             if vert not in filled_contour:
                 vert.select = False     
         for face in not_selected_faces:
             face.select = False
         bmesh.update_edit_mesh(start_obj.data)
+        
+        
+        ### unwrap
+        obj = context.active_object
+        self.reset_spritesheet(context,start_obj)
+        bm = bmesh.from_edit_mesh(obj.data)
+        unselected_verts = []
+        for vert in bm.verts:
+            if not vert.select:
+                unselected_verts.append(vert)
+                vert.select = True
+        unselected_faces = []
+        for face in bm.faces:
+            if not face.select:
+                unselected_faces.append(face)
+                face.select = True        
+        bpy.ops.uv.project_from_view(camera_bounds=False, correct_aspect=True, scale_to_bounds=True)        
+        
+        for vert in unselected_verts:
+            vert.select = False
+        for face in unselected_faces:
+            face.select = False    
+        self.revert_rest_spritesheet(context,start_obj)
+        
         return fill_ok
     
+    def reset_spritesheet(self,context,obj):
+        selected_verts = []
+        bpy.ops.object.mode_set(mode="OBJECT")
+        
+        handle_uv_items(context,obj)
+        
+        self.tiles_x = obj.coa_tiles_x
+        self.tiles_y = obj.coa_tiles_y
+        self.sprite_frame = obj.coa_sprite_frame
+        obj.coa_sprite_frame = 0
+        obj.coa_tiles_x = 1
+        obj.coa_tiles_y = 1
+        
+        bpy.ops.object.mode_set(mode="EDIT")
+    
+    def revert_rest_spritesheet(self,context,obj):
+        bpy.ops.object.mode_set(mode="OBJECT")
+        set_uv_default_coords(context,obj)
+        obj.coa_tiles_x = self.tiles_x
+        obj.coa_tiles_y = self.tiles_y
+        obj.coa_sprite_frame = self.sprite_frame
+        bpy.ops.object.mode_set(mode="EDIT")
+        
     def normal_fill(self,context):
         obj = context.active_object
         
         bpy.ops.mesh.edge_face_add()
+        bpy.ops.uv.project_from_view(camera_bounds=False, correct_aspect=True, scale_to_bounds=True)
+        
+        self.reset_spritesheet(context,obj)
+        
+        
         bm = bmesh.from_edit_mesh(obj.data)
         unselected_faces = []
         for face in bm.faces:
@@ -254,15 +311,16 @@ class Fill(bpy.types.Operator):
                 unselected_faces.append(face)
             face.select = True    
             
-        bmesh.update_edit_mesh(obj.data)
-        
+            
         bpy.ops.uv.project_from_view(camera_bounds=False, correct_aspect=True, scale_to_bounds=True)
+        
         
         for face in unselected_faces:
             face.select = False
             
-        bmesh.update_edit_mesh(obj.data)    
+        bmesh.update_edit_mesh(obj.data)
         
+        self.revert_rest_spritesheet(context,obj)
     
     def execute(self,context):
         start_obj = context.active_object

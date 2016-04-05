@@ -40,6 +40,9 @@ armature_select = False
 tmp_active_object = None
 
 
+class UVData(bpy.types.PropertyGroup):
+    uv = FloatVectorProperty(default=(0,0),size=2)
+
 class AnimationCollections(bpy.types.PropertyGroup):
     def set_frame_start(self,context):
         bpy.context.scene.frame_start = self.frame_start
@@ -172,14 +175,18 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
             self.coa_sprite_frame = (self.coa_tiles_x * self.coa_tiles_y) - 1
         update_uv(context,context.active_object)
     
-    def update_verts(self,context):
-        update_uv(context,context.active_object)
-        update_verts(context,context.active_object)
-    
+        
     def change_tilesize(self,context):
-        update_uv(context,context.active_object)
-        update_verts(context,context.active_object)
+        obj = context.active_object
+        frame = self.coa_sprite_frame
+        self.coa_sprite_frame = 0
+
+        update_verts(context,obj)
+        update_uv(context,obj)
+        
+        self.coa_sprite_frame = frame
         self.coa_tiles_changed = True
+        
     
     def set_z_value(self,context):
         #obj = context.active_object
@@ -287,7 +294,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
             if obj != None and obj.type == "MESH" and obj.mode == "OBJECT":
                 row = layout.row(align=True)
                 row.label(text="Sprite Properties:")
-            if obj != None and obj.type == "MESH" and len(obj.data.vertices) == 4 and obj.mode == "OBJECT":
+            if obj != None and obj.type == "MESH" and obj.mode == "OBJECT":
                 
                 row = layout.row(align=True)
                 text = str(obj.coa_tiles_x * obj.coa_tiles_y) + " Frame(s) total"
@@ -389,7 +396,7 @@ class CutoutAnimationTools(bpy.types.Panel):
         row = layout.row(align=True)
         row.prop(screen,"coa_view",expand=True)
         
-        if context.active_object == None or (context.active_object != None and context.active_object.mode == "OBJECT"):
+        if context.active_object == None or (context.active_object != None):
             row = layout.row(align=True)
             row.label(text="General Operator:")
             

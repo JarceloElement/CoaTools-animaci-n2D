@@ -104,6 +104,7 @@ def register():
     print("Registered {} with {} modules".format(bl_info["name"], len(modules)))
     
     bpy.types.Object.coa_anim_collections = bpy.props.CollectionProperty(type=AnimationCollections)
+    bpy.types.Object.coa_uv_default_state = bpy.props.CollectionProperty(type=UVData)
     bpy.types.Scene.coa_ticker = bpy.props.IntProperty()
     kc = bpy.context.window_manager.keyconfigs.addon
     if kc:
@@ -180,9 +181,8 @@ def update_sprites(dummy):
 @persistent
 def update_thumbs(dummy):
     if hasattr(bpy.context,"active_object"):
-             
         obj = bpy.context.active_object
-        if obj != None and not obj.coa_sprite_updated and obj.name in preview_collections["coa_thumbs"]:
+        if obj != None and not obj.coa_sprite_updated:
             for thumb in preview_collections["coa_thumbs"]:
                 preview_collections["coa_thumbs"][thumb].reload()
             obj.coa_sprite_updated = True
@@ -203,6 +203,8 @@ def scene_update_callback(scene):
 def coa_startup(dummy):
     print("startup coa modal operator")
     bpy.app.handlers.scene_update_pre.append(scene_update_callback)
+    
+    ### version fix
     for obj in bpy.data.objects:
         if obj.type == "MESH":
             if "sprite" in obj:
@@ -210,7 +212,8 @@ def coa_startup(dummy):
                 del obj["sprite"]
             obj.coa_sprite_updated = False
             obj.coa_tiles_changed = True
-
+            if "coa_sprite" in obj:
+                set_uv_default_coords(bpy.context,obj)
 
 
 import atexit

@@ -85,11 +85,16 @@ class CreateSpritesheetPreview(bpy.types.Operator):
     
     
     def execute(self, context):
+        
+        
         thumb_size = get_addon_prefs(context).sprite_thumb_size
         
         obj = context.active_object
         thumb_dir_path = os.path.join(context.user_preferences.filepaths.temporary_directory,"coa_thumbs")
         if obj.coa_tiles_changed or not os.path.exists(thumb_dir_path):
+            spritesheet = obj.material_slots[0].material.texture_slots[0].texture.image
+            assign_tex_to_uv(spritesheet,obj.data.uv_textures[0])
+            
             obj.coa_tiles_changed = False
             if "coa_sprite" in obj:
                 if not os.path.exists(thumb_dir_path):
@@ -123,10 +128,12 @@ class CreateSpritesheetPreview(bpy.types.Operator):
                 else:
                     uv_texture = uv_textures["preview_render_uv"]    
                 uv_layer = obj.data.uv_layers[uv_texture.name]
-                uv_layer.data[0].uv = [0.0,0.0]
-                uv_layer.data[1].uv = [1.0,0.0]
-                uv_layer.data[2].uv = [1.0,1.0]
-                uv_layer.data[3].uv = [0.0,1.0]
+                unwrap_with_bounds(obj,1)
+                
+#                uv_layer.data[0].uv = [0.0,0.0]
+#                uv_layer.data[1].uv = [1.0,0.0]
+#                uv_layer.data[2].uv = [1.0,1.0]
+#                uv_layer.data[3].uv = [0.0,1.0]
                 
                 if sprite_dimension[0] > sprite_dimension[1]:
                     preview_dimension = [thumb_size,int(sprite_dimension[1]*(thumb_size/sprite_dimension[0]))]
@@ -136,32 +143,37 @@ class CreateSpritesheetPreview(bpy.types.Operator):
                 
                 ### itereate over all frames of a spritesheet and generate thumbnail icons
                 bake_type = bpy.context.scene.render.bake_type
+                render_margin = bpy.context.scene.render.bake_margin
+                bpy.context.scene.render.bake_margin = 0
                 init_sprite_frame = obj.coa_sprite_frame
                 for i in range(obj.coa_tiles_x * obj.coa_tiles_y):
                     obj.coa_sprite_frame = i
-                    obj.data.uv_textures.active = uv_texture
-                    idx = i
-                    img_name = "thumb_"+obj.name+"_"+str(idx).zfill(3)
+                    obj.data.uv_textures.active = obj.data.uv_textures[1]
+                    
+                    img_name = "thumb_"+obj.name+"_"+str(i).zfill(3)
                     
                     if img_name not in bpy.data.images:
                         img = bpy.data.images.new(img_name,preview_dimension[0],preview_dimension[1],True)
                     else:
                         img = bpy.data.images[img_name]
-                    assign_tex_to_uv(img,obj.data.uv_textures.active)
+                    assign_tex_to_uv(img,obj.data.uv_textures[1])
                     
                     bpy.context.scene.render.bake_type = "TEXTURE"
                     bpy.ops.object.bake_image()
                     obj.data.uv_textures.active = obj.data.uv_textures[0]
-                    
+
                     img.save_render(os.path.join(thumb_dir_path, img.name+".png"))
                     img.user_clear()
                     bpy.data.images.remove(img)
                     
+                    
                 
                 ### set back everything
+                bpy.context.scene.render.bake_margin = render_margin
                 bpy.context.scene.render.bake_type = bake_type    
                 obj.coa_sprite_frame = init_sprite_frame
-                obj.data.uv_textures.remove(uv_texture)        
+                if uv_texture.name in obj.data.uv_textures:
+                    obj.data.uv_textures.remove(uv_texture)        
                 
         return {"FINISHED"}
     

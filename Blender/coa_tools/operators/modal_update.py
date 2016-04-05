@@ -48,6 +48,7 @@ class COAModal(bpy.types.Operator):
         self.type_hist = ""
         self.value_pressed = False
         self.scaling = False
+        self.obj_mode_hist = "OBJECT"
         
     def set_frame_bounds_and_actions(self,context):
         scene = context.scene
@@ -63,7 +64,7 @@ class COAModal(bpy.types.Operator):
             return "JUST_PRESSED"
         elif event.value != "RELEASE" and self.value_pressed:
             return "PRESSED"
-        elif event.value == "RELEASE" and self.value_hist == "PRESS":
+        elif event.value == "RELEASE" and (self.value_hist == "PRESS" or self.value_hist == "NOTHING"):
             self.value_pressed = False
             return "JUST_RELEASED"
         else:
@@ -119,9 +120,9 @@ class COAModal(bpy.types.Operator):
                     material = bpy.data.materials[bone_group.name+suffix]
                     if material.diffuse_color != bone_group.colors.normal:
                         material.diffuse_color = bone_group.colors.normal
-                        
-        
-                                    
+    
+            
+            
     def modal(self,context,event):
         ### execute only if an event pressed is triggered
         active_object = context.active_object
@@ -141,6 +142,7 @@ class COAModal(bpy.types.Operator):
                 set_middle_mouse_move(False)
                 
         elif self.check_event_value(event) == "JUST_RELEASED":
+            obj = active_object
             self.update_bone_group_color(context)
             
             screen = context.screen
@@ -156,10 +158,6 @@ class COAModal(bpy.types.Operator):
                 
                 
             if active_object != None and "coa_sprite" in active_object and active_object.mode == "OBJECT":
-                obj = active_object
-#                if obj.coa_sprite_frame != obj.coa_sprite_frame_last:
-#                    update_uv(bpy.context,obj)
-#                    obj.coa_sprite_frame_last = int(obj.coa_sprite_frame)
                 if obj.coa_alpha != obj.coa_alpha_last:
                     set_alpha(obj,bpy.context,obj.coa_alpha)
                     obj.coa_alpha_last = obj.coa_alpha
@@ -169,14 +167,23 @@ class COAModal(bpy.types.Operator):
                 if obj.coa_modulate_color != obj.coa_modulate_color_last:
                     set_modulate_color(obj,context,obj.coa_modulate_color)
                     obj.coa_modulate_color_last = obj.coa_modulate_color
+            
+            if obj != None:        
+                ### leaving object edit mode
+                if obj.type == "MESH" and self.obj_mode_hist == "EDIT" and obj.mode == "OBJECT":
+                    set_uv_default_coords(context,obj)
+                ### Store sprite dimension in coa_sprite_dimension when mesh is rescaled
+                    for obj in context.selected_objects:
+                        if obj != None and "coa_sprite":
+                            obj.coa_sprite_dimension = Vector((get_local_dimension(obj)[0],0,get_local_dimension(obj)[1]))
+                ### entering object edit mode
+                elif obj.type == "MESH" and self.obj_mode_hist == "OBJECT" and obj.mode == "EDIT":
+                    #obj.coa_sprite_frame = 0
+                    pass
+                self.obj_mode_hist = obj.mode
                 
-                
-        
-        ### Store sprite dimension in coa_sprite_dimension when mesh is rescaled
-            for obj in context.selected_objects:
-                if obj != None and "coa_sprite" in obj and len(obj.data.vertices) == 4:
-                    obj.coa_sprite_dimension = Vector((get_local_dimension(obj)[0],0,get_local_dimension(obj)[1]))
                     
+        #print("value = ",event.value,"value_hist = ",self.value_hist)
             
         if self.check_scaling(active_object,event) == "SCALE_APPLIED":
             bpy.ops.object.mode_set(mode="OBJECT")
@@ -185,6 +192,7 @@ class COAModal(bpy.types.Operator):
         ###
         self.value_hist = str(event.value)
         self.type_hist = str(event.type)
+        
         return{'PASS_THROUGH'}
         
     def execute(self,context):

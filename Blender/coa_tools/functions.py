@@ -50,8 +50,7 @@ def update_uv_unwrap(context):
         
         uv_vert = get_uv_from_vert(uv_layer, vert)
         if uv_vert != None:
-            print(vert.co.xz,"----",uv_vert.uv)
-
+            pass
 
     bmesh.update_edit_mesh(me)        
     
@@ -84,6 +83,25 @@ def check_region(context,event):
             in_view_3d = False
     return in_view_3d        
 
+def unwrap_with_bounds(obj,uv_idx):
+    bpy.ops.object.mode_set(mode="EDIT")
+    me = obj.data
+    bm = bmesh.from_edit_mesh(me)
+    bm.verts.ensure_lookup_table()
+    uv_layer = bm.loops.layers.uv[uv_idx]
+    scale_x = 1.0 / get_local_dimension(obj)[0] * obj.coa_tiles_x
+    scale_z = 1.0 / get_local_dimension(obj)[1] * obj.coa_tiles_y
+    offset = [get_local_dimension(obj)[2][0] * scale_x , get_local_dimension(obj)[2][1] * scale_z]
+    for i,v in enumerate(bm.verts):
+        for l in v.link_loops:
+            uv_data = l[uv_layer]
+            uv_data.uv[0] = (bm.verts[i].co[0] * scale_x) - offset[0]
+            uv_data.uv[1] = (bm.verts[i].co[2] * scale_z)+1 - offset[1]
+   
+    bmesh.update_edit_mesh(me)
+    bm.free()
+    bpy.ops.object.mode_set(mode="OBJECT")
+
 def get_local_dimension(obj):
     x0 = 10000000000*10000000000
     x1 = -10000000000*10000000000
@@ -99,7 +117,9 @@ def get_local_dimension(obj):
             y0 = vert.co[2]
         if vert.co[2] > y1:
             y1 = vert.co[2]
-    return [(x1-x0)*obj.coa_tiles_x,(y1-y0)*obj.coa_tiles_y]
+            
+    offset = [x0,y1]        
+    return [(x1-x0)*obj.coa_tiles_x,(y1-y0)*obj.coa_tiles_y,offset]
 
 def get_addon_prefs(context):
     addon_name = __name__.split(".")[0]
@@ -354,41 +374,72 @@ def get_children(context,obj,ob_list=[]):
                 get_children(context,child,ob_list)
     return ob_list  
 
+def handle_uv_items(context,obj):
+    uv_coords = obj.data.uv_layers[obj.data.uv_layers.active.name].data
+    ### add uv items
+    for i in range(len(uv_coords)-len(obj.coa_uv_default_state)):
+        item = obj.coa_uv_default_state.add()
+    ### remove unneeded uv items    
+    if len(uv_coords) < len(obj.coa_uv_default_state):
+        for i in range(len(obj.coa_uv_default_state) - len(uv_coords)):
+            obj.coa_uv_default_state.remove(0)
+
+def set_uv_default_coords(context,obj):
+    uv_coords = obj.data.uv_layers[obj.data.uv_layers.active.name].data
+    ### add uv items
+    for i in range(len(uv_coords)-len(obj.coa_uv_default_state)):
+        item = obj.coa_uv_default_state.add()
+    ### remove unneeded uv items    
+    if len(uv_coords) < len(obj.coa_uv_default_state):
+        for i in range(len(obj.coa_uv_default_state) - len(uv_coords)):
+            obj.coa_uv_default_state.remove(0)
+    
+    ### set default uv coords
+    frame_size = Vector((1 / obj.coa_tiles_x,1 / obj.coa_tiles_y))
+    pos_x = frame_size.x * (obj.coa_sprite_frame % obj.coa_tiles_x)
+    pos_y = frame_size.y *  -int(int(obj.coa_sprite_frame) / int(obj.coa_tiles_x))
+    frame = Vector((pos_x,pos_y))
+    offset = Vector((0,1-(1/obj.coa_tiles_y)))
+    
+    
+    for i,coord in enumerate(uv_coords):
+        
+        uv_vec_x = (coord.uv[0] - frame[0]) * obj.coa_tiles_x 
+        uv_vec_y = (coord.uv[1] - offset[1] - frame[1]) * obj.coa_tiles_y
+        uv_vec = Vector((uv_vec_x,uv_vec_y)) 
+        obj.coa_uv_default_state[i].uv = uv_vec
                         
 def update_uv(context,obj):
-    if "coa_sprite" in obj and len(obj.data.vertices) == 4:
-        mode_prev = obj.mode
-        if hasattr(context,"active_object") and obj == context.active_object and obj.type == "MESH":
-            bpy.ops.object.mode_set(mode="OBJECT")
-        coord1 = obj.data.uv_layers[obj.data.uv_layers.active.name].data[0]
-        coord2 = obj.data.uv_layers[obj.data.uv_layers.active.name].data[1]
-        coord3 = obj.data.uv_layers[obj.data.uv_layers.active.name].data[2]
-        coord4 = obj.data.uv_layers[obj.data.uv_layers.active.name].data[3]
-        
+    if "coa_sprite" in obj and obj.mode == "OBJECT":        
         sprite_object = get_sprite_object(obj)
-        anim_data = obj
         
-        frame_size = Vector((1 / anim_data.coa_tiles_x,1 / anim_data.coa_tiles_y))
-        pos_x = frame_size.x * (anim_data.coa_sprite_frame % anim_data.coa_tiles_x)
-        pos_y = frame_size.y *  -int(int(anim_data.coa_sprite_frame) / int(anim_data.coa_tiles_x))
+        frame_size = Vector((1 / obj.coa_tiles_x,1 / obj.coa_tiles_y))
+        pos_x = frame_size.x * (obj.coa_sprite_frame % obj.coa_tiles_x)
+        pos_y = frame_size.y *  -int(int(obj.coa_sprite_frame) / int(obj.coa_tiles_x))
         frame = Vector((pos_x,pos_y))
+        offset = Vector((0,1-(1/obj.coa_tiles_y)))
         
-        offset = Vector((0,1))-Vector((0,frame_size.y))
-        
-        coord1.uv = Vector((0.0 / anim_data.coa_tiles_x,0.0 / anim_data.coa_tiles_y)) + offset + frame
-        coord2.uv = Vector((1.0 / anim_data.coa_tiles_x,0.0 / anim_data.coa_tiles_y)) + offset + frame
-        coord3.uv = Vector((1.0 / anim_data.coa_tiles_x,1.0 / anim_data.coa_tiles_y)) + offset + frame
-        coord4.uv = Vector((0.0 / anim_data.coa_tiles_x,1.0 / anim_data.coa_tiles_y)) + offset + frame
-        
-        
-        if hasattr(context,"active_object") and obj == context.active_object and obj.type == "MESH":
-            bpy.ops.object.mode_set(mode=mode_prev)
+        for i,coord in enumerate(obj.data.uv_layers[obj.data.uv_layers.active.name].data):
+            coord.uv = Vector((obj.coa_uv_default_state[i].uv[0] / obj.coa_tiles_x , obj.coa_uv_default_state[i].uv[1]/ obj.coa_tiles_y)) + frame + offset
+      
         
 def update_verts(context,obj):
-    if "coa_sprite" in obj and len(obj.data.vertices) == 4:
+    if "coa_sprite" in obj:
+        sprite_object = get_sprite_object(obj)
+        armature = get_armature(sprite_object)
+        if armature != None:
+            armature_pose_position = armature.data.pose_position
+            armature.data.pose_position = "REST"
+            armature.update_tag()
+            bpy.context.scene.update()
+        
         mode_prev = obj.mode
         
         obj.coa_dimensions_old = Vector(obj.dimensions)
+        
+        spritesheet = obj.material_slots[0].material.texture_slots[0].texture.image
+        assign_tex_to_uv(spritesheet,obj.data.uv_textures[0])
+        
         sprite_sheet_width = obj.data.uv_textures[0].data[0].image.size[0]
         sprite_sheet_height = obj.data.uv_textures[0].data[0].image.size[1]
         
@@ -396,13 +447,15 @@ def update_verts(context,obj):
         scale_y = round(obj.coa_sprite_dimension[2] / sprite_sheet_height,5)
         
         sprite_object = get_sprite_object(obj)
-        anim_data = obj
         
         for vert in obj.data.vertices:
-            vert.co[0] = vert.co[0] / obj.coa_dimensions_old[0] * sprite_sheet_width / anim_data.coa_tiles_x * scale_x * obj.matrix_world.to_scale()[0]
-            vert.co[2] = vert.co[2] / obj.coa_dimensions_old[2] * sprite_sheet_height / anim_data.coa_tiles_y * scale_y * obj.matrix_world.to_scale()[2]
+            vert.co[0] = (vert.co[0] / obj.coa_dimensions_old[0] * sprite_sheet_width / obj.coa_tiles_x * scale_x * obj.matrix_local.to_scale()[0])
+            vert.co[2] = (vert.co[2] / obj.coa_dimensions_old[2] * sprite_sheet_height / obj.coa_tiles_y * scale_y * obj.matrix_local.to_scale()[2])
             
         bpy.ops.object.mode_set(mode=mode_prev)    
+        
+        if armature != None:
+            armature.data.pose_position = armature_pose_position
 
 def set_z_value(context,obj,z):
     scale = get_addon_prefs(context).sprite_import_export_scale

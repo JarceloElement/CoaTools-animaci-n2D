@@ -67,6 +67,8 @@ class ImportSprite(bpy.types.Operator):
         bmesh.update_edit_mesh(me)
         bpy.ops.object.mode_set(mode="OBJECT")
         obj.data.uv_textures.new("UVMap")
+        set_uv_default_coords(context,obj)
+        
         obj.location = Vector((pos[0],pos[1],-pos[2]))*self.scale + Vector((self.offset[0],self.offset[1],self.offset[2]))*self.scale
         obj["coa_sprite"] = True
         if self.parent != "None":
