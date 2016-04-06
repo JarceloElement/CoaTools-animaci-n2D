@@ -41,26 +41,46 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import os
+import json
 from math import floor, sqrt, ceil
 from gimpfu import *
+
 
 class Sprite():
     # Store the data for a sprite.
     def __init__(self, name):
         self.name = name
-        self.pos = [0,0,0]
-        self.tilesize = [1,1]
+        self.path = ''
+        self.position = [0,0,0]
+        self.z = 0
+        self.tiles_x = 1
+        self.tiles_y = 1
+        self.frame = 1
 
-    def info(self):
-        print('Name: {name}'.format(name=self.name))
-        print('Position: {pos}'.format(pos=self.pos))
-        print('Tilesize: {tilesize}'.format(tilesize=self.tilesize))
-
+    def get_data(self):
+        ''' Return sprite info as json encodable data '''
+        data = {
+            "name": self.name,
+            "type": "SPRITE",
+            "resource_path": self.path,
+            "pivot_offset": [0.0, 0.0],
+            "position": self.position,
+            "rotation": 0.0,
+            "scale": [1.0, 1.0],
+            "opacity": 1.0,
+            "z": self.z,
+            "tiles_x": self.tiles_x,
+            "tiles_y": self.tiles_y,
+            "frame_index": self.frame,
+            "children": []
+        }
+        return data
+            
 
 class CoaExport():
     def __init__(self, img):
         self.img = img
-        self.sprites = {}
+        self.sprites = []
 
 
     def paste_layer(self, img, name, x, y):
@@ -86,18 +106,75 @@ class CoaExport():
         width = layer.width / 2 + offset[0]
         height = layer.height / 2 + offset[1]
         pos = pdb.gimp_image_get_item_position(self.img, layer)
-        self.sprites[name] = Sprite(name)
-        self.sprites[name].pos = [width, pos, height]
-        self.sprites[name].info()
         pdb.plug_in_autocrop_layer(self.img, layer)
         # Copy layer into new image and save it out
         pdb.gimp_edit_copy(layer)
         imgtmp = pdb.gimp_edit_paste_as_new()
-        self.save_png(imgtmp, '/tmp/{name}'.format(name=name))
+        # TODO! Get destination path from user save dialog.
+        path = '/tmp/{name}'.format(name=name)
+        self.save_png(imgtmp, path)
         pdb.gimp_image_delete(imgtmp)
+        sprite = Sprite(name)
+        sprite.position = [width, pos, height]
+        sprite.resource_path = path
+        return sprite
 
-    def export_tiles(self, layer):
-        pass
+    def export_sprite_sheet(self, layer):
+        ''' Export a sprite sheet from a layer group '''
+        # Find the layer position
+        offset = layer.offsets
+        width = layer.width / 2 + offset[0]
+        height = layer.height / 2 + offset[1]
+        pos = pdb.gimp_image_get_item_position(self.img, layer)
+        # Find grid size
+        frames = len(layer.children)
+        gridx = floor(sqrt(frames))
+        gridy = ceil(frames / gridx)
+        # TODO! Replace autocrop with a custom function that only crops transparent areas.
+        pdb.plug_in_autocrop_layer(self.img, layer)
+        print('Layer Group: {x}, {y}'.format(x=layer.width, y=layer.height))
+        img2 = gimp.Image(int(layer.width * gridx), int(layer.height * gridy))
+        # TODO! Remove this after debugging is done.
+        #pdb.gimp_display_new(img2)
+        col = 1
+        row = 1
+        print('GRID: {x}, {y}'.format(x=gridx, y=gridy))
+        name = '{name}.png'.format(name = layer.name)
+        for child in layer.children:
+            print('COL {col}, ROW {row}'.format(col=col, row=row))
+            if len(child.children) > 0:
+                print("Nested layer groups not supported, skipping layer")
+                continue
+            pdb.gimp_image_set_active_layer(self.img, child)
+            pdb.plug_in_autocrop_layer(self.img, child)
+            # TODO! The offset is a bit off.
+            x_delta = child.offsets[0] - layer.offsets[0]
+            y_delta = child.offsets[1] - layer.offsets[1]
+            print('Offsets Delta: {x}, {y}'.format(x=x_delta, y=y_delta))
+            pdb.gimp_edit_copy(child)
+            self.paste_layer(img2,
+                             '{name}_{col}_{row}'.format(name=child.name, col=col, row=row),
+                             (layer.width * (col - 1)) + x_delta,
+                             (layer.height * (row - 1)) + y_delta)
+            if col % gridx > 0:
+                col = col + 1
+            else:
+                col = 1
+                row = row + 1
+        flat_layer = pdb.gimp_image_merge_visible_layers(img2, 0)
+        # TODO! Get destination path from user save dialog.
+        path = '/tmp/{name}.png'.format(name=layer.name)
+        self.save_png(img2, path)
+        pdb.gimp_image_delete(img2)
+        # Store data about the sprite
+        sprite = Sprite(name)
+        sprite.position = [width, pos, height]
+        sprite.resource_path = path
+        sprite.tiles_x = int(gridx)
+        sprite.tiles_y = int(gridy)
+        sprite.frame_index = int(frames)
+        return sprite
+        
 
     def save_png(self, img, path):
         ''' Save img to path as png '''
@@ -125,41 +202,16 @@ class CoaExport():
         for layer in self.img.layers:
             if layer.visible:
                 if len(layer.children) < 1:
-                    self.export_sprite(layer)
+                    self.sprites.append(self.export_sprite(layer))
                 else:
-                    # TODO! Possibly break this out too.
-                    # Calculate optimal tiles and image size.
-                    frames = len(layer.children)
-                    gridx = floor(sqrt(frames))
-                    gridy = ceil(frames / gridx)
-                    pdb.plug_in_autocrop_layer(self.img, layer)
-                    print('Layer Group: {x}, {y}'.format(x=layer.width, y=layer.height))
-                    img2 = gimp.Image(int(layer.width * gridx), int(layer.height * gridy))
-                    pdb.gimp_display_new(img2)
-                    col = 1
-                    row = 1
-                    print('GRID: {x}, {y}'.format(x=gridx, y=gridy))
-                    for child in layer.children:
-                        print('COL {col}, ROW {row}'.format(col=col, row=row))
-                        if len(child.children) > 0:
-                            print("Nested layer groups not supported, skipping layer")
-                            continue
-                        pdb.gimp_image_set_active_layer(self.img, child)
-                        pdb.plug_in_autocrop_layer(self.img, child)
-                        # TODO! The offset is a bit off.
-                        x_delta = child.offsets[0] - layer.offsets[0]
-                        y_delta = child.offsets[1] - layer.offsets[1]
-                        print('Offsets Delta: {x}, {y}'.format(x=x_delta, y=y_delta))
-                        pdb.gimp_edit_copy(child)
-                        self.paste_layer(img2,
-                                         '{name}_{col}_{row}'.format(name=child.name, col=col, row=row),
-                                         (layer.width * (col - 1)) + x_delta,
-                                         (layer.height * (row - 1)) + y_delta)
-                        if col % gridx > 0:
-                            col = col + 1
-                        else:
-                            col = 1
-                            row = row + 1
+                    self.sprites.append(self.export_sprite_sheet(layer))
+        for sprite in self.sprites:
+            print(json.dumps(sprite.get_data(),
+                             sort_keys=True,
+                             indent=4,
+                             separators=(',', ': '))
+            )
+
 
 
 def show_error_msg( msg ):
@@ -191,3 +243,30 @@ register(
 
 
 main()
+
+'''
+# Proposed file format
+{
+"name": "ObjectName",
+"nodes": [
+{
+"name": "layer_name.png",
+"type": "SPRITE",
+"node_path": "layer_name.png",
+"resource_path": "sprites/layer_name.png",
+"pivot_offset": [0.0,0.0],
+"position": [0.0,0.0],
+"rotation": 0.0,
+"scale": [1.0,1.0],
+"opacity": 1.0,
+"z": 0,
+"tiles_x": 1,
+"tiles_y": 1,
+"frame_index": 0,
+"children": []
+},
+...,
+...
+]
+}
+'''
