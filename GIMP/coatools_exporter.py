@@ -41,13 +41,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import os
+import gtk
 import json
 from math import floor, sqrt, ceil
 from gimpfu import *
 
 
 class Sprite():
-    # Store the data for a sprite.
+    ''' Store file and transform data for each sprite '''
+    
     def __init__(self, name):
         self.name = name
         self.path = ''
@@ -63,7 +65,7 @@ class Sprite():
             "name": self.name,
             "type": "SPRITE",
             "resource_path": self.path,
-            "pivot_offset": [0.0, 0.0],
+            "offset": [0.0, 0.0],
             "position": self.position,
             "rotation": 0.0,
             "scale": [1.0, 1.0],
@@ -81,7 +83,11 @@ class CoaExport():
     def __init__(self, img):
         self.img = img
         self.sprites = []
-
+        # TODO! Open file chooser dialog to choose name and destination
+        self.name = os.path.splitext(os.path.basename(self.img.filename))[0]
+        self.path = os.path.dirname(self.img.filename)
+        self.dest_dir = '{path}/{name}'.format(path = self.path, name = self.name)
+        self.dest_json = '{path}/{name}.json'.format(path = self.dest_dir, name = self.name)
 
     def paste_layer(self, img, name, x, y):
         ''' Paste a layer with offset '''
@@ -90,16 +96,12 @@ class CoaExport():
                                  img.height)
         floating_layer = pdb.gimp_edit_paste(layer, True)
         pdb.gimp_floating_sel_anchor(floating_layer)
-        print(img)
-        print(layer)
         pdb.plug_in_autocrop_layer(img, layer)
-        print('Offset: {x}, {y}'.format(x=x, y=y))
         pdb.gimp_layer_set_offsets(layer, x, y)
         
     def export_sprite(self, layer):
         ''' Crop and export layer to png '''
         name = '{name}.png'.format(name=layer.name)
-        print(name)
         pdb.gimp_image_set_active_layer(self.img, layer)
         # Find the layer position
         offset = layer.offsets
@@ -110,10 +112,10 @@ class CoaExport():
         # Copy layer into new image and save it out
         pdb.gimp_edit_copy(layer)
         imgtmp = pdb.gimp_edit_paste_as_new()
-        # TODO! Get destination path from user save dialog.
-        path = '/tmp/{name}'.format(name=name)
+        path = '{path}/{name}'.format(path=self.dest_dir, name=name)
         self.save_png(imgtmp, path)
         pdb.gimp_image_delete(imgtmp)
+        # Return sprite object with relevant data
         sprite = Sprite(name)
         sprite.position = [width, pos, height]
         sprite.resource_path = path
@@ -132,25 +134,21 @@ class CoaExport():
         gridy = ceil(frames / gridx)
         # TODO! Replace autocrop with a custom function that only crops transparent areas.
         pdb.plug_in_autocrop_layer(self.img, layer)
-        print('Layer Group: {x}, {y}'.format(x=layer.width, y=layer.height))
         img2 = gimp.Image(int(layer.width * gridx), int(layer.height * gridy))
-        # TODO! Remove this after debugging is done.
-        #pdb.gimp_display_new(img2)
         col = 1
         row = 1
-        print('GRID: {x}, {y}'.format(x=gridx, y=gridy))
         name = '{name}.png'.format(name = layer.name)
+        # Looop through child layers in the layer group
         for child in layer.children:
-            print('COL {col}, ROW {row}'.format(col=col, row=row))
             if len(child.children) > 0:
-                print("Nested layer groups not supported, skipping layer")
+                # TODO! Verify that this actually works.
+                show_error_msg('Nested layer groups not supported, skipping "{layer}"'.format(layer=child))
+                frames = frames - 1
                 continue
             pdb.gimp_image_set_active_layer(self.img, child)
             pdb.plug_in_autocrop_layer(self.img, child)
-            # TODO! The offset is a bit off.
             x_delta = child.offsets[0] - layer.offsets[0]
             y_delta = child.offsets[1] - layer.offsets[1]
-            print('Offsets Delta: {x}, {y}'.format(x=x_delta, y=y_delta))
             pdb.gimp_edit_copy(child)
             self.paste_layer(img2,
                              '{name}_{col}_{row}'.format(name=child.name, col=col, row=row),
@@ -161,12 +159,12 @@ class CoaExport():
             else:
                 col = 1
                 row = row + 1
+        # Flatten and save
         flat_layer = pdb.gimp_image_merge_visible_layers(img2, 0)
-        # TODO! Get destination path from user save dialog.
-        path = '/tmp/{name}.png'.format(name=layer.name)
+        path = '{path}/{name}'.format(path=self.dest_dir, name=name)
         self.save_png(img2, path)
         pdb.gimp_image_delete(img2)
-        # Store data about the sprite
+        # Return sprite object with relevant data
         sprite = Sprite(name)
         sprite.position = [width, pos, height]
         sprite.resource_path = path
@@ -175,6 +173,15 @@ class CoaExport():
         sprite.frame_index = int(frames)
         return sprite
         
+
+    def mkdir(self):
+        ''' Make a destination dir for the sprites and json file '''
+        try:
+            if not os.path.isdir(self.dest_dir):
+                os.makedirs(self.dest_dir)
+        except Exception, err:
+            show_error_msg(err)
+
 
     def save_png(self, img, path):
         ''' Save img to path as png '''
@@ -192,27 +199,35 @@ class CoaExport():
                            False,
                            1,
                            True)
-        
 
         
     def export(self):
+        ''' Export visible layers and layer groups to CoaSprite '''
         # TODO! Make this whole operation one undo
         # Loop through visible layers
-        sprites = {}
+        self.mkdir()
         for layer in self.img.layers:
             if layer.visible:
+                
                 if len(layer.children) < 1:
                     self.sprites.append(self.export_sprite(layer))
                 else:
                     self.sprites.append(self.export_sprite_sheet(layer))
+        self.write_json()
+
+    def write_json(self):
+        ''' Write out the json config for the character '''
+        sprites = []
         for sprite in self.sprites:
-            print(json.dumps(sprite.get_data(),
-                             sort_keys=True,
-                             indent=4,
-                             separators=(',', ': '))
-            )
-
-
+            sprites.append(sprite.get_data())
+        data = { "name": self.name, "nodes": sprites }
+        json_data = json.dumps(data,
+                   sort_keys=True,
+                   indent=4, separators=(',', ': '))
+        sprite_file = open(self.dest_json, "w")
+        sprite_file.write(json_data)
+        sprite_file.close()
+        
 
 def show_error_msg( msg ):
     # Output error messages to the GIMP error console.
@@ -254,7 +269,7 @@ main()
 "type": "SPRITE",
 "node_path": "layer_name.png",
 "resource_path": "sprites/layer_name.png",
-"pivot_offset": [0.0,0.0],
+"pivot_offset": [0.0,0.0], # TODO! In the Blender code, this key is "offset" not "pivot_offset". Check that my repos is up to date.
 "position": [0.0,0.0],
 "rotation": 0.0,
 "scale": [1.0,1.0],
