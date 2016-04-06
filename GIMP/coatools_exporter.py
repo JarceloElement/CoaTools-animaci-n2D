@@ -6,7 +6,7 @@
 #
 # DESCRIPTION
 #   CoaTools Exporter is a plug-in for GIMP to export layered cut-out animation
-#   characters to CoaTools: 2D Animation tools for Blender 
+#   object or characters to Cutout Animation Tools: 2D Animation Tools for Blender 
 #   (see https://github.com/ndee85/coa_tools)
 #
 # INSTALLATION
@@ -24,7 +24,7 @@ plugin = "CoaTools Exporter"
 # LICENSE
 license = """
 CoaTools Exporter
-Copyright 2011-2014 Ragnar Brynjúlfsson
+Copyright 2016 Ragnar Brynjúlfsson
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -53,11 +53,11 @@ class Sprite():
     def __init__(self, name):
         self.name = name
         self.path = ''
+        self.offset = [0.0, 0.0]
         self.position = [0,0,0]
         self.z = 0
         self.tiles_x = 1
         self.tiles_y = 1
-        self.frame = 1
 
     def get_data(self):
         ''' Return sprite info as json encodable data '''
@@ -65,7 +65,8 @@ class Sprite():
             "name": self.name,
             "type": "SPRITE",
             "resource_path": self.path,
-            "offset": [0.0, 0.0],
+            "pivot_offset": [0.0, 0.0],
+            "offset": self.offset,
             "position": self.position,
             "rotation": 0.0,
             "scale": [1.0, 1.0],
@@ -73,21 +74,26 @@ class Sprite():
             "z": self.z,
             "tiles_x": self.tiles_x,
             "tiles_y": self.tiles_y,
-            "frame_index": self.frame,
+            "frame_index": 0,
             "children": []
         }
         return data
             
 
 class CoaExport():
-    def __init__(self, img):
-        self.img = img
-        self.sprites = []
-        # TODO! Open file chooser dialog to choose name and destination
-        self.name = os.path.splitext(os.path.basename(self.img.filename))[0]
-        self.path = os.path.dirname(self.img.filename)
-        self.dest_dir = '{path}/{name}'.format(path = self.path, name = self.name)
-        self.dest_json = '{path}/{name}.json'.format(path = self.dest_dir, name = self.name)
+    def __init__(self, img, path, name):
+        if path and name:
+            self.name = name
+            self.path = path
+            self.img = img
+            self.offset = [
+                img.width / 2 * -1,
+                img.height / 2
+            ]
+            self.sprites = []
+            self.json = os.path.join(self.path, '{name}.json'.format(name=self.name))
+            self.sprite_path = os.path.join(self.path, 'sprites')
+            self.export()
 
     def paste_layer(self, img, name, x, y):
         ''' Paste a layer with offset '''
@@ -98,36 +104,45 @@ class CoaExport():
         pdb.gimp_floating_sel_anchor(floating_layer)
         pdb.plug_in_autocrop_layer(img, layer)
         pdb.gimp_layer_set_offsets(layer, x, y)
-        
-    def export_sprite(self, layer):
-        ''' Crop and export layer to png '''
-        name = '{name}.png'.format(name=layer.name)
-        pdb.gimp_image_set_active_layer(self.img, layer)
-        # Find the layer position
-        offset = layer.offsets
-        width = layer.width / 2 + offset[0]
-        height = layer.height / 2 + offset[1]
-        pos = pdb.gimp_image_get_item_position(self.img, layer)
-        pdb.plug_in_autocrop_layer(self.img, layer)
-        # Copy layer into new image and save it out
+
+    def export(self):
+        ''' Export visible layers and layer groups to CoaSprite '''
+        # TODO! Make this whole operation one undo, and undo changes once done exporting
+        self.img.undo_group_start()
+        # Loop through visible layers
+        self.mkdir()
+        for layer in self.img.layers:
+            if layer.visible:
+                name = '{name}.png'.format(name=layer.name)
+                pdb.gimp_image_set_active_layer(self.img, layer)
+                # Crop and the layer position
+                pdb.plug_in_autocrop_layer(self.img, layer)
+                width = layer.width / 2 + layer.offsets[0]
+                height = layer.height / 2 + layer.offsets[1]
+                pos = pdb.gimp_image_get_item_position(self.img, layer)
+                if len(layer.children) < 1:
+                    self.sprites.append(self.export_sprite(layer, name, width, height, pos))
+                else:
+                    self.sprites.append(self.export_sprite_sheet(layer, name, width, height, pos))
+        self.write_json()
+        self.img.undo_group_end()
+
+    def export_sprite(self, layer, name, width, height, pos):
+        ''' Export single layer to png '''
         pdb.gimp_edit_copy(layer)
         imgtmp = pdb.gimp_edit_paste_as_new()
-        path = '{path}/{name}'.format(path=self.dest_dir, name=name)
-        self.save_png(imgtmp, path)
+        sprite_path = os.path.join(self.sprite_path, name)
+        self.save_png(imgtmp, sprite_path)
         pdb.gimp_image_delete(imgtmp)
         # Return sprite object with relevant data
         sprite = Sprite(name)
+        sprite.resource_path = 'sprites/{name}'.format(name=name)
+        sprite.offset = self.offset
         sprite.position = [width, pos, height]
-        sprite.resource_path = path
         return sprite
 
-    def export_sprite_sheet(self, layer):
-        ''' Export a sprite sheet from a layer group '''
-        # Find the layer position
-        offset = layer.offsets
-        width = layer.width / 2 + offset[0]
-        height = layer.height / 2 + offset[1]
-        pos = pdb.gimp_image_get_item_position(self.img, layer)
+    def export_sprite_sheet(self, layer, name, width, height, pos):
+        ''' Export layer group to a sprite sheet '''
         # Find grid size
         frames = len(layer.children)
         gridx = floor(sqrt(frames))
@@ -161,27 +176,25 @@ class CoaExport():
                 row = row + 1
         # Flatten and save
         flat_layer = pdb.gimp_image_merge_visible_layers(img2, 0)
-        path = '{path}/{name}'.format(path=self.dest_dir, name=name)
-        self.save_png(img2, path)
+        sprite_path = os.path.join(self.sprite_path, name)
+        self.save_png(img2, sprite_path)
         pdb.gimp_image_delete(img2)
         # Return sprite object with relevant data
         sprite = Sprite(name)
+        sprite.resource_path = 'sprites/{name}'.format(name=name)
+        sprite.offset = self.offset
         sprite.position = [width, pos, height]
-        sprite.resource_path = path
         sprite.tiles_x = int(gridx)
         sprite.tiles_y = int(gridy)
-        sprite.frame_index = int(frames)
         return sprite
         
-
     def mkdir(self):
         ''' Make a destination dir for the sprites and json file '''
         try:
-            if not os.path.isdir(self.dest_dir):
-                os.makedirs(self.dest_dir)
+            if not os.path.isdir(self.sprite_path):
+                os.makedirs(self.sprite_path)
         except Exception, err:
             show_error_msg(err)
-
 
     def save_png(self, img, path):
         ''' Save img to path as png '''
@@ -200,21 +213,6 @@ class CoaExport():
                            1,
                            True)
 
-        
-    def export(self):
-        ''' Export visible layers and layer groups to CoaSprite '''
-        # TODO! Make this whole operation one undo
-        # Loop through visible layers
-        self.mkdir()
-        for layer in self.img.layers:
-            if layer.visible:
-                
-                if len(layer.children) < 1:
-                    self.sprites.append(self.export_sprite(layer))
-                else:
-                    self.sprites.append(self.export_sprite_sheet(layer))
-        self.write_json()
-
     def write_json(self):
         ''' Write out the json config for the character '''
         sprites = []
@@ -224,7 +222,7 @@ class CoaExport():
         json_data = json.dumps(data,
                    sort_keys=True,
                    indent=4, separators=(',', ': '))
-        sprite_file = open(self.dest_json, "w")
+        sprite_file = open(self.json, "w")
         sprite_file.write(json_data)
         sprite_file.close()
         
@@ -236,24 +234,31 @@ def show_error_msg( msg ):
     pdb.gimp_message(msg)
     pdb.gimp_message_set_handler(origMsgHandler)
 
-def export_to_coatools(img, drw):
-    export = CoaExport(img)
-    export.export()
+def export_to_coatools(img, drw, path, name):
+    export = CoaExport(img, path, name)
     
 
 register(
     "python_fu_coatools",
-    "Tool for exporting layered cut-out animation characters to CoaTools for Blender.",
+    ("Tool for exporting layered characters and objects to\n"
+     "Cutout Animation Tools: 2D Animation Tools for Blender\n\n"
+     "See https://github.com/ndee85/coa_tools"),
     "GNU GPL v3 or later.",
     "Ragnar Brynjúlfsson",
     "Ragnar Brynjúlfsson",
-    "March 2016",
-    "<Image>/Filters/Animation/Export to CoaTools...",
+    "April 2016",
+    "Export to CoaTools...",
     "RGB*, GRAY*, INDEXED*",
     [
+        (PF_IMAGE, "img", "Image", None),
+        (PF_DRAWABLE, "drw", "Drawable", None),
+        (PF_DIRNAME, "path", "Export to:", os.getcwd()),
+        (PF_STRING, "name", "Name:", None),
     ],
     [],
-    export_to_coatools
+    export_to_coatools,
+    menu=("<Image>/File/Export"),
+    domain=("gimp20-python", gimp.locale_directory)
 )
 
 
@@ -269,7 +274,8 @@ main()
 "type": "SPRITE",
 "node_path": "layer_name.png",
 "resource_path": "sprites/layer_name.png",
-"pivot_offset": [0.0,0.0], # TODO! In the Blender code, this key is "offset" not "pivot_offset". Check that my repos is up to date.
+"pivot_offset": [0.0,0.0],
+"offset": [-308.5, 485.5],
 "position": [0.0,0.0],
 "rotation": 0.0,
 "scale": [1.0,1.0],
