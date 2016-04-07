@@ -52,7 +52,7 @@ class Sprite():
     
     def __init__(self, name):
         self.name = name
-        self.path = ''
+        self.path = 'sprites/{name}'.format(name=self.name)
         self.offset = [0.0, 0.0]
         self.position = [0,0,0]
         self.z = 0
@@ -91,8 +91,8 @@ class CoaExport():
                 img.height / 2
             ]
             self.sprites = []
-            self.json = os.path.join(self.path, '{name}.json'.format(name=self.name))
-            self.sprite_path = os.path.join(self.path, 'sprites')
+            self.json = os.path.join(self.path, self.name, '{name}.json'.format(name=self.name))
+            self.sprite_path = os.path.join(self.path, self.name, 'sprites')
             self.export()
 
     def paste_layer(self, img, name, x, y):
