@@ -41,7 +41,8 @@ Features:
 - clever reimport functionality. Offers the possibility to merge local changes that were made in godot to the newly imported scene. This enables a very flexible workflow. Work in blender, then export. Import in godot. Make additions like adding new nodes, adding custom animations. After reimport all local changes will be preserved if merging is enabled.
 
 ## Download and Installation
-Download or Clone the github repository to your local drive.
+Download or Clone the github repository to your local drive. If you download the ZIP File from Github, please make sure to unzip.
+Don't try to install the downloaded zip file directly in blender. This won't work. Once unzipped follow the installation instructions below.
 
 ### Photoshop Exporter:
 
@@ -55,6 +56,8 @@ Don’t forget to restart Photoshop and then go to File -> Scripts -> BlenderExp
 Zip the coa_folder.
 Go to File -> User Preferences -> Add-ons and click the “Install from file...” button.
 This will install and enable the Addon for Blender. Don’t forget to save the user preferences, otherwise the addon will not be activated after restart.
+
+<a href="http://misc.artbyndee.de/coa_tools_installation.gif"><img src="http://misc.artbyndee.de/coa_tools_installation.gif" width="250" /></a>
 
 ### Godot Importer:
 Notice, this importer will only run with current godot 2.1 dev builds. 

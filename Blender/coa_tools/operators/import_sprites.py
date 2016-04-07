@@ -17,17 +17,6 @@ Created by Andreas Esau
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-
-bl_info = {
-    "name": "Cutout Animation Tools",
-    "description": "This Addon provides a Toolset for a 2D Animation Workflow.",
-    "author": "Andreas Esau",
-    "version": (0, 1, 0, "Alpha"),
-    "blender": (2, 75, 0),
-    "location": "View 3D > Tools > Cutout Animation Tools",
-    "warning": "This addon is still in development.",
-    "wiki_url": "",
-    "category": "Ndee Tools" }
     
 import bpy
 import bpy_extras
@@ -57,8 +46,10 @@ class ImportSprite(bpy.types.Operator):
     tilesize = FloatVectorProperty(default = Vector((1,1)),size=2)
     parent = StringProperty(name="Parent Object",default="None")
     
+    
     def create_mesh(self,context,name="Sprite",width=100,height=100,pos=Vector((0,0,0))):
         me = bpy.data.meshes.new(name)
+        me.show_double_sided = True
         obj = bpy.data.objects.new(name,me)
         context.scene.objects.link(obj)
         context.scene.objects.active = obj
@@ -76,8 +67,10 @@ class ImportSprite(bpy.types.Operator):
         bmesh.update_edit_mesh(me)
         bpy.ops.object.mode_set(mode="OBJECT")
         obj.data.uv_textures.new("UVMap")
+        set_uv_default_coords(context,obj)
+        
         obj.location = Vector((pos[0],pos[1],-pos[2]))*self.scale + Vector((self.offset[0],self.offset[1],self.offset[2]))*self.scale
-        obj["sprite"] = True
+        obj["coa_sprite"] = True
         if self.parent != "None":
             obj.parent = bpy.data.objects[self.parent]
         return obj
@@ -108,12 +101,17 @@ class ImportSprite(bpy.types.Operator):
         if os.path.exists(self.path):
             data = bpy.data
             sprite_name = os.path.basename(self.path)
-            if sprite_name not in data.images:
+            
+            sprite_found = False
+            for image in bpy.data.images:
+                if os.path.samefile(bpy.path.abspath(image.filepath),self.path):
+                    sprite_found = True
+                    img = image
+                    img.reload()
+                    break
+            if not sprite_found:
                 img = data.images.load(self.path)
-            else:
-                img = data.images[sprite_name]
-                img.filepath = self.path
-                img.reload()
+                
             obj = self.create_mesh(context,name=img.name,width=img.size[0],height=img.size[1],pos=self.pos)
             mat = self.create_material(context,obj,name=img.name)
             tex = self.create_texture(context,mat,img,name=img.name)
@@ -184,19 +182,24 @@ class ImportSprites(bpy.types.Operator, ImportHelper):
             sprite_data = json.load(data_file)
             data_file.close()
             
-            sprite_object.name = sprite_data["object_name"]
-            for i,sprite in enumerate(sprite_data["sprites"]):
-                for param in sprite:
-                    filepath = os.path.join(folder, sprite[param]["name"])
+            if "name" in sprite_data:
+                sprite_object.name = sprite_data["name"]
+                
+            if "nodes" in sprite_data:
+                for i,sprite in enumerate(sprite_data["nodes"]):
+                    filepath = os.path.join(folder,sprite["resource_path"])
+                    pos = [sprite["position"][0],-sprite["z"],sprite["position"][1]]
+                    offset = [sprite["offset"][0],0,sprite["offset"][1]]
+                    parent = sprite_object.name
+                    tilesize = [sprite["tiles_x"],sprite["tiles_y"]]
+                    scale = get_addon_prefs(context).sprite_import_export_scale
                     
-                    tilesize = Vector((1,1))
-                    if "tilesize" in sprite[param]:
-                        tilesize = sprite[param]["tilesize"]
-                    bpy.ops.wm.coa_import_sprite(path=filepath,pos=sprite[param]["pos"],offset=sprite_data["offset"],parent=sprite_object.name,tilesize=tilesize,scale=get_addon_prefs(context).sprite_import_export_scale)
+                    bpy.ops.wm.coa_import_sprite(path = filepath, pos = pos, offset = offset, parent = parent, tilesize = tilesize, scale = scale)
                     obj = context.active_object
                     obj.parent = sprite_object
+                    
             context.scene.objects.active = sprite_object
-        if not bpy.data.scenes[0].coa_lock_view:
+        if bpy.context.screen.coa_view == "3D":
             bpy.ops.view3d.viewnumpad(type="FRONT")
         if context.space_data.region_3d.is_perspective:
             bpy.ops.view3d.view_persportho()
