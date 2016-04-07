@@ -179,6 +179,9 @@ func _dst_dialog_confirm(path):
 
 ### function to save a node scene to the destination path
 func save_packed_scene(scene):
+	if scene.has_node("AnimationPlayer"):
+		scene.get_node("AnimationPlayer").clear_caches()
+	
 	# pack scene and save
 	var outfile = PackedScene.new()
 	outfile.pack(scene)

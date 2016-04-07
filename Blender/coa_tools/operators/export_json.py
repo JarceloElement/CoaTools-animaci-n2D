@@ -17,17 +17,6 @@ Created by Andreas Esau
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-
-bl_info = {
-    "name": "Cutout Animation Tools",
-    "description": "This Addon provides a Toolset for a 2D Animation Workflow.",
-    "author": "Andreas Esau",
-    "version": (0, 1, 0, "Alpha"),
-    "blender": (2, 75, 0),
-    "location": "View 3D > Tools > Cutout Animation Tools",
-    "warning": "This addon is still in development.",
-    "wiki_url": "",
-    "category": "Ndee Tools" }
     
 import bpy
 import bpy_types
@@ -153,8 +142,6 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         path = path.replace("\\","/")
         return path
     
-    
-    
     ### returns a main deforming bone of a mesh. needed to assign specific bones to meshes
     def get_bone_sprites(self,sprite,armature):
         if len(sprite.vertex_groups) == 0:
@@ -175,15 +162,46 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         bone = max(vertex_weights_average, key=vertex_weights_average.get)
         return bone
     
+    def get_edit_bones(self,context):
+        self.edit_bones = {}
+        
+        active_object = context.active_object
+        context.scene.objects.active = self.armature
+        mode = self.armature.mode
+        bpy.ops.object.mode_set(mode="EDIT")
+        
+        for edit_bone in self.armature.data.edit_bones:
+            self.edit_bones[edit_bone.name] = edit_bone
+        
+        bpy.ops.object.mode_set(mode=mode)
+        context.scene.objects.active = active_object
+            
+    def get_bone_transformation(self,bone):
+        context = bpy.context
+        pose_bone = self.armature.pose.bones[bone.name]
+        
+        edit_bone = self.edit_bones[bone.name]
+        
+        mat_local =  pose_bone.matrix
+        scale = mat_local.decompose()[2]
+        scale_mat = Matrix.Identity(4)
+        scale_mat[0][0] = scale[0]
+        scale_mat[1][1] = scale[1]
+        scale_mat[2][2] = scale[2]
+
+        mat_local =  (mat_local*(edit_bone.matrix*scale_mat).inverted())*scale_mat
+        return mat_local
+        
+        
     def get_bone_scale(self,bone):
         pose_bone = self.armature.pose.bones[bone.name]
-        if bone.parent == None:
-            bone_scale = (pose_bone.matrix_channel).to_scale()
-            #bone_scale = pose_bone.scale
+        
+        if bone.parent != None:
+            local_mat = self.get_bone_transformation(bone.parent).inverted() * self.get_bone_transformation(bone)
         else:
-            #bone_scale = pose_bone.scale
-            bone_scale = (pose_bone.parent.matrix_channel.inverted() * pose_bone.matrix_channel).to_scale()
-        bone_scale_2d = [bone_scale[0],bone_scale[2]]    
+            local_mat = self.get_bone_transformation(bone)    
+        bone_scale = local_mat.decompose()[2]
+        bone_scale_2d = [bone_scale[1],bone_scale[1]]    
         return bone_scale_2d
     
     def get_relative_bone_pos(self,bone,type):
@@ -209,12 +227,14 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     
     def get_bone_rotation(self,bone):
         pose_bone = self.armature.pose.bones[bone.name]
-        if bone.parent == None:
-            euler_rot = pose_bone.matrix_channel.to_euler()
-            degrees = math.degrees(euler_rot[1])
+        
+        if bone.parent != None:
+            local_mat = self.get_bone_transformation(bone.parent).inverted() * self.get_bone_transformation(bone)
         else:
-            euler_rot = (pose_bone.parent.matrix_channel.inverted() * pose_bone.matrix_channel).to_euler()
-            degrees = round(math.degrees(euler_rot[1]),2)
+            local_mat = self.get_bone_transformation(bone)    
+        bone_euler_rot = local_mat.decompose()[1].to_euler()
+        
+        degrees = round(math.degrees(bone_euler_rot.y),2)
         return -math.radians(degrees)
     
     def get_relative_mesh_pos(self, parent, obj):
@@ -352,9 +372,10 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         action = animation_data.action
         
         fcurve_data_found = False
-        for fcurve in action.fcurves:
-            if channel in fcurve.data_path and bone in fcurve.data_path:
-                fcurve_data_found = True
+        if action != None:
+            for fcurve in action.fcurves:
+                if channel in fcurve.data_path and bone in fcurve.data_path:
+                    fcurve_data_found = True        
         return fcurve_data_found
     
     def has_keyframe(self,animation_data,name,property="any",frame=0):
@@ -523,6 +544,7 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         self.armature = get_armature(self.sprite_object)
         self.children = get_children(context,self.sprite_object,[])
         
+        self.get_edit_bones(context)
         
         ### store frame and animation state
         if len(self.sprite_object.coa_anim_collections) > 0:
