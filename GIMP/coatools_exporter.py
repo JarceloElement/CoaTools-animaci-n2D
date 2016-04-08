@@ -54,7 +54,7 @@ class Sprite():
         self.name = name
         self.path = 'sprites/{name}'.format(name=self.name)
         self.offset = [0.0, 0.0]
-        self.position = [0,0,0]
+        self.position = [0.0, 0.0]
         self.z = 0
         self.tiles_x = 1
         self.tiles_y = 1
@@ -111,23 +111,24 @@ class CoaExport():
         self.img.undo_group_start()
         # Loop through visible layers
         self.mkdir()
+        layer_count = len(self.img.layers)
         for layer in self.img.layers:
             if layer.visible:
                 name = '{name}.png'.format(name=layer.name)
                 pdb.gimp_image_set_active_layer(self.img, layer)
                 # Crop and the layer position
                 pdb.plug_in_autocrop_layer(self.img, layer)
-                width = layer.width / 2 + layer.offsets[0]
-                height = layer.height / 2 + layer.offsets[1]
-                pos = pdb.gimp_image_get_item_position(self.img, layer)
+                #width = layer.width / 2 + layer.offsets[0]
+                #height = layer.height / 2 + layer.offsets[1]
+                z = layer_count - pdb.gimp_image_get_item_position(self.img, layer)
                 if len(layer.children) < 1:
-                    self.sprites.append(self.export_sprite(layer, name, width, height, pos))
+                    self.sprites.append(self.export_sprite(layer, name, layer.offsets, z))
                 else:
-                    self.sprites.append(self.export_sprite_sheet(layer, name, width, height, pos))
+                    self.sprites.append(self.export_sprite_sheet(layer, name, layer.offsets, z))
         self.write_json()
         self.img.undo_group_end()
 
-    def export_sprite(self, layer, name, width, height, pos):
+    def export_sprite(self, layer, name, position, z):
         ''' Export single layer to png '''
         pdb.gimp_edit_copy(layer)
         imgtmp = pdb.gimp_edit_paste_as_new()
@@ -138,10 +139,11 @@ class CoaExport():
         sprite = Sprite(name)
         sprite.resource_path = 'sprites/{name}'.format(name=name)
         sprite.offset = self.offset
-        sprite.position = [width, pos, height]
+        sprite.position = position
+        sprite.z = z
         return sprite
 
-    def export_sprite_sheet(self, layer, name, width, height, pos):
+    def export_sprite_sheet(self, layer, name, position, z):
         ''' Export layer group to a sprite sheet '''
         # Find grid size
         frames = len(layer.children)
@@ -183,9 +185,10 @@ class CoaExport():
         sprite = Sprite(name)
         sprite.resource_path = 'sprites/{name}'.format(name=name)
         sprite.offset = self.offset
-        sprite.position = [width, pos, height]
+        sprite.position = position
         sprite.tiles_x = int(gridx)
         sprite.tiles_y = int(gridy)
+        sprite.z = z
         return sprite
         
     def mkdir(self):
