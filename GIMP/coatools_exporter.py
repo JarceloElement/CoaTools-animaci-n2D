@@ -126,10 +126,12 @@ class CoaExport():
                 # Crop and the layer position
                 pdb.plug_in_autocrop_layer(self.img, layer)
                 z = layer_count - pdb.gimp_image_get_item_position(self.img, layer)
-                if len(layer.children) < 1:
+                if isinstance(layer, gimp.GroupLayer) and len(layer.children) < 1:
                     self.sprites.append(self.export_sprite(layer, name, layer.offsets, z))
-                else:
+                elif isinstance(layer, gimp.Layer):
                     self.sprites.append(self.export_sprite_sheet(layer, name, layer.offsets, z))
+                else:
+                    pass
         self.write_json()
         self.img.undo_group_end()
         pdb.gimp_image_delete(self.img)
@@ -152,7 +154,11 @@ class CoaExport():
     def export_sprite_sheet(self, layer, name, position, z):
         ''' Export layer group to a sprite sheet '''
         # Find grid size
-        frames = len(layer.children)
+        #frames = len(layer.children)
+        frames = 0
+        for child in layer.children:
+            if child.visible and not isinstance(child, gimp.GroupLayer):
+                frames = frames + 1
         gridx = floor(sqrt(frames))
         gridy = ceil(frames / gridx)
         # TODO! Replace autocrop with a custom function that only crops transparent areas.
@@ -163,20 +169,21 @@ class CoaExport():
         name = '{name}.png'.format(name = layer.name)
         # Looop through child layers in the layer group
         for child in layer.children:
-            pdb.gimp_image_set_active_layer(self.img, child)
-            pdb.plug_in_autocrop_layer(self.img, child)
-            x_delta = child.offsets[0] - layer.offsets[0]
-            y_delta = child.offsets[1] - layer.offsets[1]
-            pdb.gimp_edit_copy(child)
-            self.paste_layer(img2,
-                             '{name}_{col}_{row}'.format(name=child.name, col=col, row=row),
-                             (layer.width * (col - 1)) + x_delta,
-                             (layer.height * (row - 1)) + y_delta)
-            if col % gridx > 0:
-                col = col + 1
-            else:
-                col = 1
-                row = row + 1
+            if child.visible and not isinstance(child, gimp.GroupLayer):
+                pdb.gimp_image_set_active_layer(self.img, child)
+                pdb.plug_in_autocrop_layer(self.img, child)
+                x_delta = child.offsets[0] - layer.offsets[0]
+                y_delta = child.offsets[1] - layer.offsets[1]
+                pdb.gimp_edit_copy(child)
+                self.paste_layer(img2,
+                                 '{name}_{col}_{row}'.format(name=child.name, col=col, row=row),
+                                 (layer.width * (col - 1)) + x_delta,
+                                 (layer.height * (row - 1)) + y_delta)
+                if col % gridx > 0:
+                    col = col + 1
+                else:
+                    col = 1
+                    row = row + 1
         # Flatten and save
         flat_layer = pdb.gimp_image_merge_visible_layers(img2, 0)
         sprite_path = os.path.join(self.sprite_path, name)
