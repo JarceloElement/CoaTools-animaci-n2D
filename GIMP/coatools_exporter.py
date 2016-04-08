@@ -85,7 +85,7 @@ class CoaExport():
         if path and name:
             self.name = name
             self.path = path
-            self.img = img
+            self.original_img = img
             self.offset = [
                 img.width / 2 * -1,
                 img.height / 2
@@ -107,19 +107,26 @@ class CoaExport():
 
     def export(self):
         ''' Export visible layers and layer groups to CoaSprite '''
-        # TODO! Make this whole operation one undo, and undo changes once done exporting
-        self.img.undo_group_start()
-        # Loop through visible layers
+        if os.path.isfile(os.path.join(self.path, self.name)):
+            show_error_msg('ABORTING!\nDestination is not a folder.\n {path}/{name}'.format(path=self.path, name=self.name))
+            return
+        if not os.access(self.path, os.W_OK):
+            show_error_msg('ABORTING!\nDestination is not a writable.\n {path}'.format(path=self.path))
+            return
+        if os.path.isdir(os.path.join(self.path, self.name)):
+            show_error_msg('Destination exists, I may have overwritten something in {path}/{name}'.format(path=self.path, name=self.name))
         self.mkdir()
+        # TODO! Make this whole operation one undo, and undo changes once done exporting
+        # Loop through visible layers
+        self.img = self.original_img.duplicate()
         layer_count = len(self.img.layers)
+        self.img.undo_group_start()
         for layer in self.img.layers:
             if layer.visible:
                 name = '{name}.png'.format(name=layer.name)
                 pdb.gimp_image_set_active_layer(self.img, layer)
                 # Crop and the layer position
                 pdb.plug_in_autocrop_layer(self.img, layer)
-                #width = layer.width / 2 + layer.offsets[0]
-                #height = layer.height / 2 + layer.offsets[1]
                 z = layer_count - pdb.gimp_image_get_item_position(self.img, layer)
                 if len(layer.children) < 1:
                     self.sprites.append(self.export_sprite(layer, name, layer.offsets, z))
@@ -127,6 +134,7 @@ class CoaExport():
                     self.sprites.append(self.export_sprite_sheet(layer, name, layer.offsets, z))
         self.write_json()
         self.img.undo_group_end()
+        pdb.gimp_image_delete(self.img)
 
     def export_sprite(self, layer, name, position, z):
         ''' Export single layer to png '''
@@ -266,31 +274,3 @@ register(
 
 
 main()
-
-'''
-# Proposed file format
-{
-"name": "ObjectName",
-"nodes": [
-{
-"name": "layer_name.png",
-"type": "SPRITE",
-"node_path": "layer_name.png",
-"resource_path": "sprites/layer_name.png",
-"pivot_offset": [0.0,0.0],
-"offset": [-308.5, 485.5],
-"position": [0.0,0.0],
-"rotation": 0.0,
-"scale": [1.0,1.0],
-"opacity": 1.0,
-"z": 0,
-"tiles_x": 1,
-"tiles_y": 1,
-"frame_index": 0,
-"children": []
-},
-...,
-...
-]
-}
-'''
