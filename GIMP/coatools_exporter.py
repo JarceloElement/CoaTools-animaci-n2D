@@ -41,7 +41,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import os
-import gtk
 import json
 from math import floor, sqrt, ceil
 from gimpfu import *
@@ -116,7 +115,6 @@ class CoaExport():
         if os.path.isdir(os.path.join(self.path, self.name)):
             show_error_msg('Destination exists, I may have overwritten something in {path}/{name}'.format(path=self.path, name=self.name))
         self.mkdir()
-        # TODO! Make this whole operation one undo, and undo changes once done exporting
         # Loop through visible layers
         self.img = self.original_img.duplicate()
         layer_count = len(self.img.layers)
@@ -165,11 +163,6 @@ class CoaExport():
         name = '{name}.png'.format(name = layer.name)
         # Looop through child layers in the layer group
         for child in layer.children:
-            if len(child.children) > 0:
-                # TODO! Verify that this actually works.
-                show_error_msg('Nested layer groups not supported, skipping "{layer}"'.format(layer=child))
-                frames = frames - 1
-                continue
             pdb.gimp_image_set_active_layer(self.img, child)
             pdb.plug_in_autocrop_layer(self.img, child)
             x_delta = child.offsets[0] - layer.offsets[0]
