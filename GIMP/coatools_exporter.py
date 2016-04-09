@@ -54,6 +54,7 @@ class Sprite():
         self.path = 'sprites/{name}'.format(name=self.name)
         self.offset = [0.0, 0.0]
         self.position = [0.0, 0.0]
+        self.opacity = 1.0
         self.z = 0
         self.tiles_x = 1
         self.tiles_y = 1
@@ -70,7 +71,7 @@ class Sprite():
             "position": self.position,
             "rotation": 0.0,
             "scale": [1.0, 1.0],
-            "opacity": 1.0,
+            "opacity": self.opacity,
             "z": self.z,
             "tiles_x": self.tiles_x,
             "tiles_y": self.tiles_y,
@@ -147,6 +148,7 @@ class CoaExport():
         sprite.resource_path = 'sprites/{name}'.format(name=name)
         sprite.offset = self.offset
         sprite.position = position
+        sprite.opacity = layer.opacity / 100
         sprite.z = z
         return sprite
 
@@ -194,9 +196,10 @@ class CoaExport():
         sprite.resource_path = 'sprites/{name}'.format(name=name)
         sprite.offset = self.offset
         sprite.position = position
+        sprite.opacity = layer.opacity / 100
+        sprite.z = z
         sprite.tiles_x = int(gridx)
         sprite.tiles_y = int(gridy)
-        sprite.z = z
         return sprite
         
     def mkdir(self):
