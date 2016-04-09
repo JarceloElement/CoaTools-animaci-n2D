@@ -118,7 +118,6 @@ class CoaExport():
         self.mkdir()
         # Loop through visible layers
         self.img = self.original_img.duplicate()
-        layer_count = len(self.img.layers)
         self.img.undo_group_start()
         for layer in self.img.layers:
             if layer.visible:
@@ -126,7 +125,7 @@ class CoaExport():
                 pdb.gimp_image_set_active_layer(self.img, layer)
                 # Crop and the layer position
                 pdb.plug_in_autocrop_layer(self.img, layer)
-                z = layer_count - pdb.gimp_image_get_item_position(self.img, layer)
+                z = 0 - pdb.gimp_image_get_item_position(self.img, layer)
                 if isinstance(layer, gimp.GroupLayer):
                     if len(layer.children) > 0:
                         self.sprites.append(self.export_sprite_sheet(layer, name, layer.offsets, z))
