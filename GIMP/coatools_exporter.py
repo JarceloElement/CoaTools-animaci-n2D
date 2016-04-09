@@ -64,6 +64,7 @@ class Sprite():
             "name": self.name,
             "type": "SPRITE",
             "resource_path": self.path,
+            "node_path": self.name,
             "pivot_offset": [0.0, 0.0],
             "offset": self.offset,
             "position": self.position,
@@ -126,12 +127,11 @@ class CoaExport():
                 # Crop and the layer position
                 pdb.plug_in_autocrop_layer(self.img, layer)
                 z = layer_count - pdb.gimp_image_get_item_position(self.img, layer)
-                if isinstance(layer, gimp.GroupLayer) and len(layer.children) < 1:
-                    self.sprites.append(self.export_sprite(layer, name, layer.offsets, z))
-                elif isinstance(layer, gimp.Layer):
-                    self.sprites.append(self.export_sprite_sheet(layer, name, layer.offsets, z))
+                if isinstance(layer, gimp.GroupLayer):
+                    if len(layer.children) > 0:
+                        self.sprites.append(self.export_sprite_sheet(layer, name, layer.offsets, z))
                 else:
-                    pass
+                    self.sprites.append(self.export_sprite(layer, name, layer.offsets, z))
         self.write_json()
         self.img.undo_group_end()
         pdb.gimp_image_delete(self.img)
@@ -164,6 +164,7 @@ class CoaExport():
         # TODO! Replace autocrop with a custom function that only crops transparent areas.
         pdb.plug_in_autocrop_layer(self.img, layer)
         img2 = gimp.Image(int(layer.width * gridx), int(layer.height * gridy))
+        img2.new_layer('background', img2.width, img2.height)
         col = 1
         row = 1
         name = '{name}.png'.format(name = layer.name)
@@ -246,8 +247,11 @@ def show_error_msg( msg ):
     pdb.gimp_message_set_handler(origMsgHandler)
 
 def export_to_coatools(img, drw, path, name):
-    export = CoaExport(img, path, name)
-    
+    if name:
+        export = CoaExport(img, path, name)
+    else:
+        show_error_msg("Please enter a file name.")
+        
 
 register(
     "python_fu_coatools",
@@ -264,7 +268,7 @@ register(
         (PF_IMAGE, "img", "Image", None),
         (PF_DRAWABLE, "drw", "Drawable", None),
         (PF_DIRNAME, "path", "Export to:", os.getcwd()),
-        (PF_STRING, "name", "Name:", None),
+        (PF_STRING, "name", "Name:", 'enter_name'),
     ],
     [],
     export_to_coatools,
