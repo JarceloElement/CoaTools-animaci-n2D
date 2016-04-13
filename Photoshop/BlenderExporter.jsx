@@ -1,4 +1,4 @@
-﻿#target Photoshop
+#target Photoshop
 
 var doc = app.activeDocument;
 var layers = doc.layers;
@@ -225,7 +225,7 @@ function export_sprites(export_path , export_name , crop_to_dialog_bounds , cent
         var margin = 0;
         if (layer_name.indexOf("m=") != -1){
             var margin_str_index = layer_name.indexOf("m=")+2;
-            margin = parseInt(layer_name.substring(margin_str_index,layer_name.length));
+            margin = Math.ceil(layer_name.substring(margin_str_index,layer_name.length));
         }
         var layer_pos = Array(bounds[0] - margin,-i,bounds[1] - margin);
         var tmp_doc = app.activeDocument;
@@ -259,11 +259,11 @@ function export_sprites(export_path , export_name , crop_to_dialog_bounds , cent
             var sprite_count = sprites.length;
             if (column_str_index = layer_name.indexOf("c=") != -1){
                 var column_str_index = layer_name.indexOf("c=")+2;
-                var columns = parseInt(layer_name.substring(column_str_index,layer_name.length));
+                var columns = Math.ceil(layer_name.substring(column_str_index,layer_name.length));
             }else{
-                var columns = parseInt(Math.sqrt(sprite_count)+0.5);
+                var columns = Math.ceil((Math.sqrt(sprite_count)+0.5));
             }
-            tile_size = [columns,parseInt(sprite_count/columns + 0.5)];
+            tile_size = [columns,Math.ceil(sprite_count/columns + 0.5)];
             var k = 0;
             for(var j = 0;j<sprites.length;j++){
                 if(j>0 && j%columns == 0){
