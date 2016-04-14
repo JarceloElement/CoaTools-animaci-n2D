@@ -218,7 +218,11 @@ class QuickArmature(bpy.types.Operator):
         orig_armature.select = True     
         obj.select = True       
         
+        obj_orig_location = obj.location
+        obj.location[1] = 0
         bpy.ops.object.parent_set(type='ARMATURE_AUTO')
+        obj.location = obj_orig_location
+        
         for i,bone in enumerate(orig_armature.data.edit_bones):
             orig_armature.data.bones[i].use_deform = use_deform[i]
         i = 0
@@ -273,8 +277,8 @@ class QuickArmature(bpy.types.Operator):
             if (event.value == 'PRESS') and event.type == mouse_button:
                 self.mouse_press = True
                 #return {'RUNNING_MODAL'}
-            elif event.value == 'RELEASE' and (event.type == mouse_button):
-                self.mouse_press = False
+            elif event.value in ['RELEASE','NOTHING'] and (event.type == mouse_button):
+                self.mouse_press = False 
             #print(event.value,"-----------",event.type)
             ### Cast Ray from mousePosition and set Cursor to hitPoint
             rayStart,rayEnd, ray = self.project_cursor(event)
@@ -284,7 +288,19 @@ class QuickArmature(bpy.types.Operator):
             elif rayEnd != None:
                 bpy.context.scene.cursor_location = rayEnd
             bpy.context.scene.cursor_location[1] = context.active_object.location[1]
-
+            
+            if event.value in ["RELEASE"]:
+                if self.object_hover_hist != None :
+                    self.object_hover_hist.show_x_ray = False
+                    self.object_hover_hist.select = False
+                    self.object_hover_hist.show_name = False
+                    self.object_hover_hist = None
+                if self.object_hover != None:
+                    self.object_hover.show_x_ray = False
+                    self.object_hover.select = False
+                    self.object_hover.show_name = False
+                        
+                
             if not event.alt and not event.ctrl:
                 self.object_hover = None
                 ### mouse just pressed
@@ -304,8 +320,7 @@ class QuickArmature(bpy.types.Operator):
                     if context.active_bone != None:
                         bpy.ops.armature.calculate_roll(type='GLOBAL_POS_Y')
                 ### mouse release   
-                elif not self.mouse_press and self.mouse_press_hist and self.current_bone != None: 
-                    #print("just released")
+                elif not self.mouse_press and self.mouse_press_hist and self.current_bone != None:
                     bpy.ops.ed.undo_push(message="Add Bone: "+self.current_bone.name)
                     self.current_bone.hide = False   
                     self.current_bone = None
@@ -315,9 +330,10 @@ class QuickArmature(bpy.types.Operator):
                     bpy.ops.object.mode_set(mode='OBJECT')
                     bpy.ops.object.mode_set(mode='EDIT')
                     self.set_waits = False 
-                    
-            elif event.alt and not event.ctrl:
+            
+            elif (event.alt or "ALT" in event.type) and not event.ctrl:
                 self.object_hover_hist = self.object_hover
+                
                 hover_objects = self.return_ray_sprites(context,event)
                 distance = 1000000000
                 if len(hover_objects) > 0:
@@ -328,13 +344,14 @@ class QuickArmature(bpy.types.Operator):
                             self.object_hover = ray[1]
                 else:
                     self.object_hover = None
+                
                 show_x_ray = False
                 if self.object_hover != self.object_hover_hist:
                     if self.object_hover != None:
                         self.object_hover.show_name = True
                         self.object_hover.select = True
                         show_x_ray = self.object_hover.show_x_ray
-                        self.object_hover.show_x_ray = True
+                        self.object_hover.show_x_ray = True      
                     if self.object_hover_hist != None:
                         self.object_hover_hist.show_name = False
                         self.object_hover_hist.select = False
@@ -350,11 +367,10 @@ class QuickArmature(bpy.types.Operator):
                         obj = ray[1]
                         self.set_weights(context,self.object_hover)
                 return{'RUNNING_MODAL'}
-            if self.object_hover_hist != None:
-                self.object_hover_hist.show_x_ray = False
-                self.object_hover_hist.select = False
-                self.object_hover_hist.show_name = False
-                self.object_hover_hist = None
+
+            
+            
+            
                     
             ### cancel  
             if (event.type in {'ESC'} and self.in_view_3d) or (context.active_object.mode != "EDIT" and context.active_object.type == "ARMATURE" and self.set_waits == False) or not self.sprite_object.coa_edit_armature:

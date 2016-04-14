@@ -106,6 +106,7 @@ def register():
     bpy.types.Object.coa_anim_collections = bpy.props.CollectionProperty(type=AnimationCollections)
     bpy.types.Object.coa_uv_default_state = bpy.props.CollectionProperty(type=UVData)
     bpy.types.Scene.coa_ticker = bpy.props.IntProperty()
+    bpy.types.WindowManager.coa_update_uv = bpy.props.BoolProperty(default=False)
     kc = bpy.context.window_manager.keyconfigs.addon
     if kc:
         km = kc.keymaps.new(name="3D View", space_type="VIEW_3D")
@@ -113,7 +114,7 @@ def register():
         kmi.active = False
         
     bpy.app.handlers.frame_change_post.append(update_sprites)    
-    bpy.app.handlers.scene_update_pre.append(update_thumbs)
+    bpy.app.handlers.scene_update_pre.append(scene_update)
     bpy.app.handlers.load_post.append(coa_startup)
 
     register_keymaps()
@@ -130,7 +131,7 @@ def unregister():
     bpy.context.window_manager.coa_running_modal = False
     
     bpy.app.handlers.frame_change_post.remove(update_sprites)
-    bpy.app.handlers.scene_update_pre.remove(update_thumbs)
+    bpy.app.handlers.scene_update_pre.remove(scene_update)
     bpy.app.handlers.load_post.remove(coa_startup)
     
     unregister_keymaps()
@@ -139,7 +140,6 @@ def unregister():
          
 @persistent
 def update_sprites(dummy):
-    bpy.context.scene.coa_ticker += 1
     update_scene = False
 
     context = bpy.context
@@ -167,7 +167,7 @@ def update_sprites(dummy):
                 set_modulate_color(obj,context,obj.coa_modulate_color)
                 obj.coa_modulate_color_last = obj.coa_modulate_color
 
-        if bpy.context.scene.coa_ticker%3 == 0 and update_scene:
+        if update_scene:
             bpy.context.scene.update()
 
     ### animation wrap mode
@@ -179,7 +179,21 @@ def update_sprites(dummy):
 
 
 @persistent
-def update_thumbs(dummy):
+def scene_update(dummy):
+    context = bpy.context
+    if hasattr(context,"visible_objects"):
+        objects = context.visible_objects
+    else:
+        objects = bpy.data.objects
+    if  hasattr(context,"window_manager"):   
+        wm = bpy.context.window_manager    
+        if wm.coa_update_uv:
+            for obj in objects:
+                if "coa_sprite" in obj and obj.animation_data != None and obj.type == "MESH":
+                    if obj.coa_sprite_frame != obj.coa_sprite_frame_last:
+                        update_uv(bpy.context,obj)
+                        obj.coa_sprite_frame_last = obj.coa_sprite_frame             
+                
     if hasattr(bpy.context,"active_object"):
         obj = bpy.context.active_object
         if obj != None and not obj.coa_sprite_updated:

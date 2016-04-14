@@ -49,6 +49,7 @@ class COAModal(bpy.types.Operator):
         self.value_pressed = False
         self.scaling = False
         self.obj_mode_hist = "OBJECT"
+        self.bone_transformation = False
         
     def set_frame_bounds_and_actions(self,context):
         scene = context.scene
@@ -126,6 +127,7 @@ class COAModal(bpy.types.Operator):
     def modal(self,context,event):
         ### execute only if an event pressed is triggered
         active_object = context.active_object
+
         if self.check_event_value(event) == "JUST_PRESSED":
             wm = context.window_manager
             self.sprite_object = get_sprite_object(context.active_object)
@@ -168,7 +170,7 @@ class COAModal(bpy.types.Operator):
                     set_modulate_color(obj,context,obj.coa_modulate_color)
                     obj.coa_modulate_color_last = obj.coa_modulate_color
             
-            if obj != None:        
+            if obj != None and "coa_sprite" in obj:        
                 ### leaving object edit mode
                 if obj.type == "MESH" and self.obj_mode_hist == "EDIT" and obj.mode == "OBJECT":
                     set_uv_default_coords(context,obj)
@@ -180,8 +182,13 @@ class COAModal(bpy.types.Operator):
                 elif obj.type == "MESH" and self.obj_mode_hist == "OBJECT" and obj.mode == "EDIT":
                     #obj.coa_sprite_frame = 0
                     pass
+                    
                 self.obj_mode_hist = obj.mode
                 
+        if self.check_event_value(event) == "JUST_PRESSED" and event.type == "G" and active_object.type == "ARMATURE" and active_object.mode == "POSE":
+            bpy.context.window_manager.coa_update_uv = True
+        elif self.check_event_value(event) == "JUST_RELEASED" and bpy.context.window_manager.coa_update_uv:  
+            bpy.context.window_manager.coa_update_uv = False
                     
         #print("value = ",event.value,"value_hist = ",self.value_hist)
             

@@ -210,13 +210,15 @@ def create_armature_parent(context):
 def set_local_view(local):
     for area in bpy.context.screen.areas:
         if area.type == 'VIEW_3D':
+            override = bpy.context.copy()
+            override["area"] = area
             if local:
                 if area.spaces.active.local_view == None:
-                    bpy.ops.view3d.localview()
+                    bpy.ops.view3d.localview(override)
             else:
                 if area.spaces.active.local_view != None:
-                    bpy.ops.view3d.localview()
-                    
+                    bpy.ops.view3d.localview(override)
+                        
 
 def actions_callback(self,context):
     actions = []
@@ -344,9 +346,11 @@ def ray_cast(start,end,list=[]):
     if result[0]:
         if result not in list:
             list.append(result)
+        else:
+            return list    
         
         dir_vec = (end - start).normalized()
-        new_start = result[3] + (dir_vec*0.0001)
+        new_start = result[3] + (dir_vec*0.000001)
         return ray_cast(new_start,end,list)
     else:
         return list

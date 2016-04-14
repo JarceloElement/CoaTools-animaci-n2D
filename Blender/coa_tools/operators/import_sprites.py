@@ -104,11 +104,12 @@ class ImportSprite(bpy.types.Operator):
             
             sprite_found = False
             for image in bpy.data.images:
-                if os.path.samefile(bpy.path.abspath(image.filepath),self.path):
-                    sprite_found = True
-                    img = image
-                    img.reload()
-                    break
+                if os.path.exists(bpy.path.abspath(image.filepath)) and os.path.exists(self.path):
+                    if os.path.samefile(bpy.path.abspath(image.filepath),self.path):
+                        sprite_found = True
+                        img = image
+                        img.reload()
+                        break
             if not sprite_found:
                 img = data.images.load(self.path)
                 

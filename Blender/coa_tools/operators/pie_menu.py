@@ -12,6 +12,9 @@ class VIEW3D_PIE_coa_menu(Menu):
     def poll(cls, context):
         obj = context.active_object
         sprite_object = get_sprite_object(obj)
+        if context.area.type == "NLA_EDITOR ":
+            return True
+        
         if (obj != None and "coa_sprite" in obj) or (sprite_object != None and obj.type == "ARMATURE"):
             return True
     
@@ -20,7 +23,7 @@ class VIEW3D_PIE_coa_menu(Menu):
         
         layout = self.layout
         pie = layout.menu_pie()
-        if obj != None:
+        if obj != None and context.area.type == "VIEW_3D":
             #pie.operator_enum("view3d.coa_pie_menu_options", "selected_mode")
             if obj.type == "MESH":
                 pie.operator("my_operator.select_frame_thumb",text="Select Frame",icon="IMAGE_COL")

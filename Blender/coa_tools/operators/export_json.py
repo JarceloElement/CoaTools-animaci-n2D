@@ -133,7 +133,7 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     
     def get_sprite_rotation(self,sprite_name):
         obj = bpy.data.objects[sprite_name]
-        euler_rot = obj.matrix_local.to_euler()
+        euler_rot = obj.matrix_basis.to_euler()
         degrees = math.degrees(euler_rot[1])
         return -math.radians(degrees)
         
@@ -144,8 +144,10 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     
     ### returns a main deforming bone of a mesh. needed to assign specific bones to meshes
     def get_bone_sprites(self,sprite,armature):
-        if len(sprite.vertex_groups) == 0:
+        if len(sprite.vertex_groups) == 0 and sprite.parent_bone == '':
             return sprite.parent.name
+        elif sprite.parent_bone != '':
+            return sprite.parent_bone
         
         vertex_count = len(sprite.data.vertices)
         vertex_weights_average = {}
@@ -163,15 +165,16 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         return bone
     
     def get_edit_bones(self,context):
-        self.edit_bones = {}
-        
+        self.edit_bone_matrices = {}
         active_object = context.active_object
         context.scene.objects.active = self.armature
         mode = self.armature.mode
         bpy.ops.object.mode_set(mode="EDIT")
         
-        for edit_bone in self.armature.data.edit_bones:
-            self.edit_bones[edit_bone.name] = edit_bone
+        for bone in self.armature.data.bones:
+            edit_bone = self.armature.data.edit_bones[bone.name]
+            self.edit_bone_matrices[bone.name] = edit_bone.matrix
+            edit_bone.name = bone.name
         
         bpy.ops.object.mode_set(mode=mode)
         context.scene.objects.active = active_object
@@ -180,7 +183,7 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         context = bpy.context
         pose_bone = self.armature.pose.bones[bone.name]
         
-        edit_bone = self.edit_bones[bone.name]
+        edit_bone_matrix = self.edit_bone_matrices[bone.name]
         
         mat_local =  pose_bone.matrix
         scale = mat_local.decompose()[2]
@@ -188,8 +191,7 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         scale_mat[0][0] = scale[0]
         scale_mat[1][1] = scale[1]
         scale_mat[2][2] = scale[2]
-
-        mat_local =  (mat_local*(edit_bone.matrix*scale_mat).inverted())*scale_mat
+        mat_local = (mat_local*(edit_bone_matrix*scale_mat).inverted())*scale_mat
         return mat_local
         
         
@@ -239,7 +241,7 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     
     def get_relative_mesh_pos(self, parent, obj):
         if type(parent) == bpy_types.Bone:
-            relative_pos = (obj.matrix_local.to_translation() - parent.head_local) * self.scale_multiplier
+            relative_pos = (obj.matrix_basis.to_translation() - parent.head_local) * self.scale_multiplier
         else:
             relative_pos = obj.matrix_local.to_translation() * self.scale_multiplier
             
@@ -266,6 +268,14 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
             os.makedirs(res_dir_path)
         if os.path.isfile(img_path):# and not os.path.isfile(copied_res_path):
             shutil.copy(img_path,res_dir_path)
+        else:
+            original_path = img.filepath
+            export_path = os.path.join(res_dir_path,sprite_name)
+            img.filepath = export_path
+            img.filepath_raw = export_path
+            img.save()
+            img.filepath = original_path
+            img.filepath_raw = original_path
         
         rel_path = os.path.relpath(copied_res_path,os.path.dirname(self.export_path))
         return self.change_path_slashes(rel_path)
@@ -544,8 +554,9 @@ class ExportToJson(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
         self.armature = get_armature(self.sprite_object)
         self.children = get_children(context,self.sprite_object,[])
         
-        self.get_edit_bones(context)
-        
+        if self.armature != None:
+            self.get_edit_bones(context)
+        #return{'FINISHED'}
         ### store frame and animation state
         if len(self.sprite_object.coa_anim_collections) > 0:
             current_anim_collection = self.sprite_object.coa_anim_collections[self.sprite_object.coa_anim_collections_index]
