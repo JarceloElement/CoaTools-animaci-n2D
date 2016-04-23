@@ -96,13 +96,13 @@ class EditWeights(bpy.types.Operator):
             
     def modal(self, context, event):
     
-        if self.sprite_object.coa_edit_weights == False or get_local_view(context) == None or context.active_object.mode != "WEIGHT_PAINT":
+        if get_local_view(context) == None or (context.active_object != None and context.active_object.mode != "WEIGHT_PAINT") or context.active_object == None:
             self.exit_edit_weights(context)
             self.sprite_object.coa_edit_weights = False
-            bpy.ops.ed.undo_push(message="Enter Edit Weights")
+            bpy.ops.ed.undo_push(message="Exit Edit Weights")
             self.disable_object_color(False)
             return {"FINISHED"}
-            
+          
         return {"PASS_THROUGH"}
     
     def disable_object_color(self,disable):
@@ -152,7 +152,6 @@ class EditWeights(bpy.types.Operator):
         self.use_unified_strength = tool_settings.unified_paint_settings.use_unified_strength
         tool_settings.unified_paint_settings.use_unified_strength = True
         
-        bpy.ops.ed.undo_push(message="Edit Weights")
         self.disable_object_color(True)
         context.window_manager.modal_handler_add(self)
         
@@ -164,8 +163,6 @@ class EditWeights(bpy.types.Operator):
         
         self.hide_non_deform_bones(context)
         self.unhide_deform_bones(context)
-    
-        bpy.ops.object.mode_set(mode="WEIGHT_PAINT")
             
         if self.armature != None:
             self.armature_set_mode(context,"POSE",True)
@@ -182,6 +179,7 @@ class EditWeights(bpy.types.Operator):
 
         set_local_view(True)
         context.scene.tool_settings.use_auto_normalize = True
-        #bpy.ops.ed.undo_push(message="Enter Edit Weights")
+        
+        bpy.ops.object.mode_set(mode="WEIGHT_PAINT")
         return {"RUNNING_MODAL"}
             

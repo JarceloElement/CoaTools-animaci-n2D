@@ -220,6 +220,13 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
         self.coa_sprite_frame = int(self.coa_sprite_frame_previews)
         if context.scene.tool_settings.use_keyframe_insert_auto:
             bpy.ops.my_operator.add_keyframe(prop_name="coa_sprite_frame",interpolation="CONSTANT")
+    
+    
+    def exit_edit_weights(self,context):
+        if not self.coa_edit_weights:
+            obj = context.active_object
+            if obj != None and obj.mode == "WEIGHT_PAINT":
+                bpy.ops.object.mode_set(mode="OBJECT")
         
     bpy.types.Object.coa_dimensions_old = FloatVectorProperty()
     bpy.types.Object.coa_sprite_dimension = FloatVectorProperty()
@@ -236,7 +243,7 @@ class CutoutAnimationObjectProperties(bpy.types.Panel):
     bpy.types.Object.coa_favorite = BoolProperty()
     bpy.types.Object.coa_animation_loop = BoolProperty(default=False,description="Sets the Timeline frame to 0 when it reaches the end of the animation. Also works for changing frame with cursor keys.")
     bpy.types.Bone.coa_favorite = BoolProperty()
-    bpy.types.Object.coa_edit_weights = BoolProperty(default=False)
+    bpy.types.Object.coa_edit_weights = BoolProperty(default=False,update=exit_edit_weights)
     bpy.types.Object.coa_edit_armature = BoolProperty(default=False)
     bpy.types.Object.coa_edit_mesh = BoolProperty(default=False)
     bpy.types.Object.coa_hide = BoolProperty(default=False,update=hide)
@@ -474,7 +481,7 @@ class CutoutAnimationTools(bpy.types.Panel):
                     row = col.row(align=True)
                     row.prop(tool_settings,"use_auto_normalize",text="Auto Normalize")
                     
-        if context.active_object != None and context.active_object.mode == "EDIT" and context.active_object.type == "MESH" and sprite_object.coa_edit_mesh:
+        if context.active_object != None and "coa_sprite" in obj and context.active_object.mode == "EDIT" and context.active_object.type == "MESH" and sprite_object.coa_edit_mesh:
             row = layout.row(align=True)
             row.label(text="Mesh Tools:")
             

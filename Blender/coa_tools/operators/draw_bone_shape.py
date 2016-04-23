@@ -36,12 +36,17 @@ from .. functions import *
 
 def get_bone_shapes(self, context):
     enum_items = []
-    
+    names_list = []
     i = 0
+    
     for obj in bpy.data.objects:
         if "_custom_shape" in obj.name:
-            enum_items.append((obj.name,obj.name,obj.name,"MESH_DATA",i))
-            i += 1
+            names_list.append(obj.name)
+    names_list = sorted(names_list)        
+    
+    for name in names_list:
+        enum_items.append((name,name,name,"MESH_DATA",i))
+        i += 1
     enum_items.append(("NEW_SHAPE","New Shape","Create new Shape","NEW",i+1))        
     return enum_items        
 

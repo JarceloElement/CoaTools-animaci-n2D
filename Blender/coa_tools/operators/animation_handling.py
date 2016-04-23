@@ -274,6 +274,7 @@ class CreateNlaTrack(bpy.types.Operator):
     insert_at_cursor = BoolProperty(default=True)
     anim_collection_name = StringProperty()
     auto_blend = BoolProperty(default=True)
+    extrapolation = EnumProperty(default="NOTHING",items=(("HOLD_FORWARD","Hold Forward","HOLD_FORWARD"),("HOLD","Hold","HOLD"),("NOTHING","Nothing","NOTHING")) )
 
     def check(self,context):
         return True
@@ -297,6 +298,8 @@ class CreateNlaTrack(bpy.types.Operator):
         row.prop(self,"repeat",text="Repeat Strip")
         row = layout.row()
         row.prop(self,"scale",text="Scale Strip")
+        row = layout.row()
+        row.prop(self,"extrapolation",text="Strip Extrapolation")
         
 
     def invoke(self,context,event):
@@ -312,19 +315,21 @@ class CreateNlaTrack(bpy.types.Operator):
             return anim_data.nla_tracks.new()
         
         strip_space = range(strip_range[0],strip_range[1]+1)
+        
+        intersecting_strip_found = False
         for i,track in enumerate(anim_data.nla_tracks):
             track = anim_data.nla_tracks[i]
-            
             if len(track.strips) == 0:
                 return track
             
-            intersecting_strip_found = False
+            
             for strip in track.strips:
-                if strip.frame_start in strip_space or strip.frame_end in strip_space:
+                if (strip_range[0] > strip.frame_start and strip_range[0] < strip.frame_end) or (strip_range[1] > strip.frame_start and strip_range[1] < strip.frame_end):
                     intersecting_strip_found = True
-            if not intersecting_strip_found:
-                return track
-                 
+                
+        if not intersecting_strip_found:
+            return track
+               
         return anim_data.nla_tracks.new()
     
     def execute(self, context):
@@ -362,8 +367,7 @@ class CreateNlaTrack(bpy.types.Operator):
                         child.animation_data_create()
                         anim_data = child.animation_data
                         
-                        nla_track = self.get_empty_track(anim_data,[strip_start,strip_end])
-                            
+                        nla_track = self.get_empty_track(anim_data,[strip_start,strip_end])  
                         strip = nla_track.strips.new(action_name,self.start,action)
                         strip.action_frame_start = action_start
                         strip.action_frame_end = action_end
@@ -373,6 +377,7 @@ class CreateNlaTrack(bpy.types.Operator):
                         strip.repeat = self.repeat
                         strip.use_auto_blend = self.auto_blend
                         strip.scale = self.scale
+                        strip.extrapolation = self.extrapolation
                     
                     
         return {"FINISHED"}
