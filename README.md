@@ -19,6 +19,9 @@ Features:
 - export folder with multiple layers as spritesheets
 - generate json data with all layer positions and spritesheet informations
 
+### GIMP sprite exporter
+Export GIMP layers and layer groups into separate files with json coordinate information. For additional usage information see the README.md in the GIMP folder.
+
 ### Cutout Animation Tools Blender
 This is the biggest component, as most of the work will be done here.
 Features the addon offers are:
@@ -51,6 +54,15 @@ The .jsx file has to be copied into the photoshop scripts folder which is locate
 C:\Program Files\Adobe\Adobe Photoshop CC 2015\Presets\Scripts
 
 Don’t forget to restart Photoshop and then go to File -> Scripts -> BlenderExporter.jsx
+
+### GIMP Exporter:
+
+The coatools_exporter.py should be copied to your GIMP plug-ins folder which is located in:
+- Linux: /home/YOU/.gimp2.8/plug-ins/
+- Windows: C:\Users\YOU\.gimp2.8\plug-ins
+
+It should show up unde Files>Export to CoaTools... after your restart GIMP
+
 
 ### Blender Addon:
 Zip the coa_folder.
