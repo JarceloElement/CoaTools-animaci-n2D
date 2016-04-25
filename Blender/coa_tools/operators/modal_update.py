@@ -185,7 +185,7 @@ class COAModal(bpy.types.Operator):
                     
                 self.obj_mode_hist = obj.mode
                 
-        if self.check_event_value(event) == "JUST_PRESSED" and event.type == "G" and active_object.type == "ARMATURE" and active_object.mode == "POSE":
+        if self.check_event_value(event) == "JUST_PRESSED" and active_object != None and event.type == "G" and active_object.type == "ARMATURE" and active_object.mode == "POSE":
             bpy.context.window_manager.coa_update_uv = True
         elif self.check_event_value(event) == "JUST_RELEASED" and bpy.context.window_manager.coa_update_uv:  
             bpy.context.window_manager.coa_update_uv = False
