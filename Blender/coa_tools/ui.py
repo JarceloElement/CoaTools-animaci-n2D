@@ -427,8 +427,9 @@ class CutoutAnimationTools(bpy.types.Panel):
                     row = layout.row(align=True)
                     row.operator("import.coa_import_sprites",text="Import Sprites",icon="IMASEL")
                     
-                    row = layout.row()
-                    row.operator("object.export_to_json",text="Export Json",icon="EXPORT",emboss=True)
+                    if get_addon_prefs(context).json_export:
+                        row = layout.row()
+                        row.operator("object.export_to_json",text="Export Json",icon="EXPORT",emboss=True)
                     
                 row = layout.row(align=True)
                 row.label(text="Edit Operator:")

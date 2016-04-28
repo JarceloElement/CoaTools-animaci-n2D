@@ -58,9 +58,11 @@ class ExampleAddonPreferences(bpy.types.AddonPreferences):
     show_donate_icon = bpy.props.BoolProperty(name="Show Donate Icon",default=True)
     sprite_import_export_scale = bpy.props.FloatProperty(name="Sprite import/export scale",default=0.01)
     sprite_thumb_size = bpy.props.IntProperty(name="Sprite thumbnail size",default=48)
+    json_export = bpy.props.BoolProperty(name="Experimental Json export",default=False)
     def draw(self, context):
         layout = self.layout
         layout.prop(self, "show_donate_icon")
+        layout.prop(self,"json_export")
         layout.prop(self,"sprite_import_export_scale")
         layout.prop(self,"sprite_thumb_size")
 
@@ -178,21 +180,28 @@ def update_sprites(dummy):
                 context.scene.frame_current = 0
 
 
+ticker = 0
 @persistent
 def scene_update(dummy):
+    global ticker
+    ticker += 1
     context = bpy.context
     if hasattr(context,"visible_objects"):
         objects = context.visible_objects
     else:
         objects = bpy.data.objects
     if  hasattr(context,"window_manager"):   
-        wm = bpy.context.window_manager    
+        wm = bpy.context.window_manager
         if wm.coa_update_uv:
             for obj in objects:
                 if "coa_sprite" in obj and obj.animation_data != None and obj.type == "MESH":
                     if obj.coa_sprite_frame != obj.coa_sprite_frame_last:
                         update_uv(bpy.context,obj)
-                        obj.coa_sprite_frame_last = obj.coa_sprite_frame             
+                        obj.coa_sprite_frame_last = obj.coa_sprite_frame 
+                    if ticker%5 == 0:
+                        if obj.coa_alpha != obj.coa_alpha_last:
+                            set_alpha(obj,bpy.context,obj.coa_alpha)
+                            obj.coa_alpha_last = obj.coa_alpha                
                 
     if hasattr(bpy.context,"active_object"):
         obj = bpy.context.active_object
