@@ -263,7 +263,7 @@ function export_sprites(export_path , export_name , crop_to_dialog_bounds , cent
             }else{
                 var columns = Math.ceil((Math.sqrt(sprite_count)+0.5));
             }
-            tile_size = [columns,Math.ceil(sprite_count/columns + 0.5)];
+            tile_size = [columns,Math.ceil(sprite_count/columns)];
             var k = 0;
             for(var j = 0;j<sprites.length;j++){
                 if(j>0 && j%columns == 0){
