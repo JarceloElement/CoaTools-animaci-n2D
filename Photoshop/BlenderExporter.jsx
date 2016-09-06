@@ -172,7 +172,7 @@ function duplicate_into_new_doc(){
     executeAction( idMk, desc231, DialogModes.NO );
 }    
 
-function export_sprites(export_path , export_name , crop_to_dialog_bounds , center_sprites){
+function export_sprites(export_path , export_name , crop_to_dialog_bounds , center_sprites, crop_layers, export_json){
     var init_units = app.preferences.rulerUnits;
     app.preferences.rulerUnits = Units.PIXELS;
     // check if folder exists. if not, create one
@@ -250,7 +250,9 @@ function export_sprites(export_path , export_name , crop_to_dialog_bounds , cent
         crop_bounds[2] += margin;
         crop_bounds[3] += margin;
         
-        tmp_doc.crop(crop_bounds);
+        if (crop_layers == true){
+            tmp_doc.crop(crop_bounds);
+        }    
         
         // check if layer is a group with sprite setting
         if (layer_name.indexOf("--sprites") != -1){
@@ -308,7 +310,10 @@ function export_sprites(export_path , export_name , crop_to_dialog_bounds , cent
         tmp_doc.close(SaveOptions.DONOTSAVECHANGES);
     }
     dupli_doc.close(SaveOptions.DONOTSAVECHANGES);
-    save_coords(center_sprites,export_path, export_name);
+    
+    if (export_json == true){
+        save_coords(center_sprites,export_path, export_name);
+    }    
     app.preferences.rulerUnits = init_units;
 } 
 
@@ -318,7 +323,7 @@ function export_button(){
     app.activeDocument.info.caption = win.export_path.text;
     app.activeDocument.info.captionWriter = win.export_name.text;
     //export_sprites(win.export_path.text, win.export_name.text, win.limit_layer.value, win.center_sprites.value);
-    app.activeDocument.suspendHistory("Export selected Sprites","export_sprites(win.export_path.text, win.export_name.text, win.limit_layer.value, win.center_sprites.value)");
+    app.activeDocument.suspendHistory("Export selected Sprites","export_sprites(win.export_path.text, win.export_name.text, win.limit_layer.value, win.center_sprites.value,win.crop_layers.value,win.export_json.value)");
     win.close();
 }    
 
@@ -330,13 +335,15 @@ function path_button(){
     }
 }    
 
-var win = new Window("dialog", 'Json Exporter '+exporter_version, [0,0,445,117]);
+var win = new Window("dialog", 'Json Exporter '+exporter_version, [0,0,445,160]);
 with(win){
 	win.export_path = add( "edittext", [85,15,365,35], 'export_path' );
 	win.sText = add( "statictext", [5,20,75,40], 'Export Path:' );
 	win.limit_layer = add( "checkbox", [5,70,180,90], 'Limit layers by Document' );
-	win.center_sprites = add( "checkbox", [5,90,180,110], 'Center Sprites in Blender' );
-	win.export_button = add( "button", [340,90,440,112], 'Export Layers' );
+	win.crop_layers = add( "checkbox", [5,90,180,90], 'Crop Layers' );
+	win.center_sprites = add( "checkbox", [5,110,180,90], 'Center Sprites in Blender' );
+	win.export_json = add( "checkbox", [5,130,180,90], 'Export Json File' );
+	win.export_button = add( "button", [340,130,440,112], 'Export Layers' );
 	win.export_name = add( "edittext", [85,40,440,60], 'export_name' );
 	win.sText2 = add( "statictext", [5,45,85,65], 'Export Name:' );
 	win.button_path = add( "button", [370,13,440,35], 'select' );
@@ -347,5 +354,7 @@ win.export_button.onClick = export_button;
 win.button_path.onClick = path_button;
 win.center_sprites.value = true;
 win.limit_layer.value = true;
+win.crop_layers.value = true;
+win.export_json.value = true;
 win.center();
 win.show();
